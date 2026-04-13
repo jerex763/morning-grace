@@ -21,6 +21,7 @@ dependencies {
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
     implementation(libs.android.core.ktx)
+    implementation(libs.appcompat)
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
 }
