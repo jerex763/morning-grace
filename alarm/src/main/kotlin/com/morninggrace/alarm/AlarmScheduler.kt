@@ -34,20 +34,20 @@ class AlarmScheduler @Inject constructor(
         val intent = Intent(context, AlarmReceiver::class.java)
         val pending = PendingIntent.getBroadcast(
             context, ALARM_REQUEST_CODE, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        ) ?: return
         alarmManager.cancel(pending)
     }
 
     private fun nextAlarmMillis(hour: Int, minute: Int): Long {
+        val now = System.currentTimeMillis()
         val cal = Calendar.getInstance().apply {
+            timeInMillis = now
             set(Calendar.HOUR_OF_DAY, hour)
             set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
-            if (timeInMillis <= System.currentTimeMillis()) {
-                add(Calendar.DAY_OF_YEAR, 1)
-            }
+            if (timeInMillis <= now) add(Calendar.DAY_OF_YEAR, 1)
         }
         return cal.timeInMillis
     }
