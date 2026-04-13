@@ -5,11 +5,12 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import com.morninggrace.core.model.AlarmConfig
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Calendar
 import javax.inject.Inject
 
 class AlarmScheduler @Inject constructor(
-    private val context: Context,
+    @ApplicationContext private val context: Context,
     private val alarmManager: AlarmManager,
     private val permissionChecker: AlarmPermissionChecker
 ) {
