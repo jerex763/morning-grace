@@ -29,6 +29,7 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":alarm"))
     implementation(project(":orchestrator"))
+    implementation(project(":bible"))
     implementation(libs.android.core.ktx)
     implementation(libs.appcompat)
     implementation(libs.hilt.android)
