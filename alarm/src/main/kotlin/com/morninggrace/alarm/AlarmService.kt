@@ -8,7 +8,15 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import com.morninggrace.orchestrator.MorningSession
+import com.morninggrace.tts.AndroidTtsEngine
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class AlarmService : Service() {
@@ -16,23 +24,53 @@ class AlarmService : Service() {
     companion object {
         const val CHANNEL_ID = "morning_grace_alarm"
         const val NOTIFICATION_ID = 1
+        const val ACTION_STOP = "STOP"
     }
+
+    @Inject lateinit var morningSession: MorningSession
+    @Inject lateinit var ttsEngine: AndroidTtsEngine
+
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        ttsEngine.attach(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            stopSession()
+            return START_NOT_STICKY
+        }
+
         startForeground(NOTIFICATION_ID, buildNotification())
+
+        serviceScope.launch {
+            morningSession.start()
+            stopSelf()
+        }
+
         return START_NOT_STICKY
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
+        ttsEngine.detach()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    private fun stopSession() {
+        morningSession.stop()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
     private fun buildNotification(): Notification {
         val stopIntent = Intent(this, AlarmService::class.java).apply {
-            action = "STOP"
+            action = ACTION_STOP
         }
         val stopPending = PendingIntent.getService(
             this, 0, stopIntent,

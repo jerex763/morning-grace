@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.morninggrace.alarm.AlarmPermissionCheckerTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-04-14T03:19:50" hostname="Jeremys-MacBook-Pro.local" time="0.711">
+  <properties/>
+  <testcase name="canScheduleExactAlarms returns true on pre-S devices" classname="com.morninggrace.alarm.AlarmPermissionCheckerTest" time="0.534"/>
+  <testcase name="canScheduleExactAlarms returns true when AlarmManager allows it" classname="com.morninggrace.alarm.AlarmPermissionCheckerTest" time="0.176"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

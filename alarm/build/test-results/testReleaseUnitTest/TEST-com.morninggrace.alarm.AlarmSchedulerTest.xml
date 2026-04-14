@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.morninggrace.alarm.AlarmSchedulerTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-04-14T03:19:50" hostname="Jeremys-MacBook-Pro.local" time="0.476">
+  <properties/>
+  <testcase name="schedule does not call setAlarmClock when permission denied" classname="com.morninggrace.alarm.AlarmSchedulerTest" time="0.391"/>
+  <testcase name="cancel calls cancel on AlarmManager" classname="com.morninggrace.alarm.AlarmSchedulerTest" time="0.043"/>
+  <testcase name="schedule calls setAlarmClock when permission granted" classname="com.morninggrace.alarm.AlarmSchedulerTest" time="0.042"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
