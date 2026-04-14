@@ -1,6 +1,7 @@
 package com.morninggrace.bible.model
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BiblePassageTest {
@@ -20,6 +21,6 @@ class BiblePassageTest {
     @Test
     fun `whole chapter uses sentinel -1 for verseEnd`() {
         val p = BiblePassage(book = 1, chapter = 1, verseStart = 1, verseEnd = -1)
-        assertEquals(true, p.isWholeChapter())
+        assertTrue(p.isWholeChapter())
     }
 }

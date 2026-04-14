@@ -7,7 +7,7 @@ data class BiblePassage(
     val verseEnd: Int = -1  // -1 means whole chapter
 ) {
     fun verseCount(): Int {
-        if (verseEnd == -1) error("verseEnd is -1 (whole chapter); count unknown without DB")
+        require(verseEnd != -1) { "verseEnd is -1 (whole chapter); count unknown without DB" }
         return verseEnd - verseStart + 1
     }
 
