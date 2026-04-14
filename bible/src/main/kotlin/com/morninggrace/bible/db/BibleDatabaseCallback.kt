@@ -4,18 +4,21 @@ import android.content.Context
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.morninggrace.bible.model.BibleVerse
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class BibleDatabaseCallback(
     private val context: Context,
     private val dao: () -> BibleVerseDao
 ) : RoomDatabase.Callback() {
 
+    companion object {
+        private const val INSERT_BATCH_SIZE = 500
+    }
+
     override fun onCreate(db: SupportSQLiteDatabase) {
         super.onCreate(db)
-        CoroutineScope(Dispatchers.IO).launch {
+        runBlocking(Dispatchers.IO) {
             seedFromAsset("cuv.csv", "zh")
             seedFromAsset("esv.csv", "en")
         }
@@ -27,7 +30,7 @@ class BibleDatabaseCallback(
             for (line in lines) {
                 val verse = parseCsvLine(line, lang) ?: continue
                 verses.add(verse)
-                if (verses.size >= 500) {
+                if (verses.size >= INSERT_BATCH_SIZE) {
                     dao().insertAll(verses)
                     verses.clear()
                 }
