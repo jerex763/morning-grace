@@ -16,15 +16,15 @@ object AppModule {
     private const val PREFS_NAME = "alarm_prefs"
     private const val KEY_LAT = "location_lat"
     private const val KEY_LON = "location_lon"
-    private const val DEFAULT_LAT = -33.87f   // Sydney
-    private const val DEFAULT_LON = 151.21f
+    private const val DEFAULT_LAT = -33.87   // Sydney
+    private const val DEFAULT_LON = 151.21
 
     @Provides @Singleton
     fun providesLocationPrefs(@ApplicationContext context: Context): LocationPrefs {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return LocationPrefs(
-            lat = prefs.getFloat(KEY_LAT, DEFAULT_LAT).toDouble(),
-            lon = prefs.getFloat(KEY_LON, DEFAULT_LON).toDouble()
+            lat = prefs.getString(KEY_LAT, null)?.toDoubleOrNull() ?: DEFAULT_LAT,
+            lon = prefs.getString(KEY_LON, null)?.toDoubleOrNull() ?: DEFAULT_LON
         )
     }
 }
