@@ -13,8 +13,8 @@ import kotlin.coroutines.resumeWithException
 
 class AndroidTtsEngine @Inject constructor() : TtsEngine {
 
-    private var tts: TextToSpeech? = null
-    private var ready = false
+    @Volatile private var tts: TextToSpeech? = null
+    @Volatile private var ready = false
 
     /** Called by the Android TextToSpeech.OnInitListener. */
     fun onInitResult(status: Int) {
@@ -48,16 +48,21 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
             engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(id: String) {}
                 override fun onDone(id: String) {
-                    if (id == utteranceId) cont.resume(Unit)
+                    if (id == utteranceId && cont.isActive) cont.resume(Unit)
+                }
+                override fun onError(id: String, errorCode: Int) {
+                    if (id == utteranceId && cont.isActive)
+                        cont.resumeWithException(RuntimeException("TTS error on utterance $id, code $errorCode"))
                 }
                 @Deprecated("Deprecated in Java")
                 override fun onError(id: String) {
-                    if (id == utteranceId) cont.resumeWithException(RuntimeException("TTS error on utterance $id"))
+                    if (id == utteranceId && cont.isActive)
+                        cont.resumeWithException(RuntimeException("TTS error on utterance $id"))
                 }
             })
 
             val result = engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
-            if (result == TextToSpeech.ERROR) {
+            if (result == TextToSpeech.ERROR && cont.isActive) {
                 cont.resumeWithException(RuntimeException("TTS speak() returned ERROR"))
             }
 
