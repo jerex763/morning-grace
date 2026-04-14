@@ -6,6 +6,7 @@ import com.morninggrace.core.model.Language
 import com.morninggrace.tts.TtsEngine
 import java.time.LocalDate
 import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 
 class BroadcastOrchestrator @Inject constructor(
     private val ttsEngine: TtsEngine,
@@ -18,13 +19,13 @@ class BroadcastOrchestrator @Inject constructor(
 
     suspend fun broadcast(date: LocalDate = LocalDate.now()) {
         state = BroadcastState.Preparing
-
-        val content = prepare(date)
-        state = BroadcastState.Broadcasting(content)
-
-        deliver(content)
-
-        state = BroadcastState.Idle
+        try {
+            val content = prepare(date)
+            state = BroadcastState.Broadcasting(content)
+            deliver(content)
+        } finally {
+            state = BroadcastState.Idle
+        }
     }
 
     fun stop() {
@@ -73,5 +74,8 @@ class BroadcastOrchestrator @Inject constructor(
     private suspend fun safeSpeak(text: String, language: Language) {
         if (text.isBlank()) return
         runCatching { ttsEngine.speak(text, language) }
+            .onFailure { e ->
+                if (e is CancellationException) throw e
+            }
     }
 }
