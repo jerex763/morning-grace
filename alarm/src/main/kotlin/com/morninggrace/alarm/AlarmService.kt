@@ -46,8 +46,11 @@ class AlarmService : Service() {
         startForeground(NOTIFICATION_ID, buildNotification())
 
         serviceScope.launch {
+            android.util.Log.d("MorningGrace", "AlarmService: attaching TTS")
             ttsEngine.attach(this@AlarmService)  // suspends until TTS ready
+            android.util.Log.d("MorningGrace", "AlarmService: TTS attached, starting session")
             morningSession.start()
+            android.util.Log.d("MorningGrace", "AlarmService: session done")
             stopSelf()
         }
 

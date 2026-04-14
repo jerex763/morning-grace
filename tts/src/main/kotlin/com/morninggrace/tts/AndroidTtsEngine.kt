@@ -8,9 +8,11 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+@Singleton
 class AndroidTtsEngine @Inject constructor() : TtsEngine {
 
     @Volatile private var tts: TextToSpeech? = null
@@ -18,7 +20,11 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
 
     /** Called by the Android TextToSpeech.OnInitListener. */
     fun onInitResult(status: Int) {
-        ready = (status == TextToSpeech.SUCCESS)
+        // Only allow SUCCESS to set ready=true. Ignore subsequent ERROR callbacks
+        // (Android TTS fires onInit twice on some devices/emulators).
+        // Only detach() should reset ready to false.
+        if (status == TextToSpeech.SUCCESS) ready = true
+        android.util.Log.d("MorningGrace", "TTS onInit: status=$status ready=$ready (SUCCESS=${TextToSpeech.SUCCESS})")
     }
 
     /** Must be called before [speak]. Suspends until TTS engine is initialised. */
@@ -42,7 +48,7 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
         val engine = requireNotNull(tts) { "AndroidTtsEngine not attached" }
         require(ready) { "AndroidTtsEngine not ready" }
 
-        val locale = if (language == Language.ZH) Locale.CHINESE else Locale.ENGLISH
+        val locale = Locale.ENGLISH // TODO: restore ZH after TTS voice pack confirmed
         engine.language = locale
 
         val utteranceId = UUID.randomUUID().toString()

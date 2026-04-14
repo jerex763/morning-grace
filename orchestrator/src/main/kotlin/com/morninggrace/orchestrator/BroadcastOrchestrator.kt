@@ -1,5 +1,6 @@
 package com.morninggrace.orchestrator
 
+import android.util.Log
 import com.morninggrace.bible.BibleRepository
 import com.morninggrace.bible.plan.BibleReadingPlan
 import com.morninggrace.core.model.Language
@@ -7,6 +8,9 @@ import com.morninggrace.tts.TtsEngine
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.delay
+
+private const val TAG = "MorningGrace"
 
 class BroadcastOrchestrator @Inject constructor(
     private val ttsEngine: TtsEngine,
@@ -18,11 +22,20 @@ class BroadcastOrchestrator @Inject constructor(
         private set
 
     suspend fun broadcast(date: LocalDate = LocalDate.now()) {
+        // Wait up to 3s for TTS to be ready (onInit can be async on some devices)
+        var waited = 0
+        while (!ttsEngine.isAvailable() && waited < 30) { delay(100); waited++ }
+        Log.d(TAG, "broadcast() started, ttsAvailable=${ttsEngine.isAvailable()}, waited=${waited * 100}ms")
         state = BroadcastState.Preparing
         try {
             val content = prepare(date)
             state = BroadcastState.Broadcasting(content)
+            Log.d(TAG, "deliver() starting")
             deliver(content)
+            Log.d(TAG, "deliver() done")
+        } catch (e: Exception) {
+            Log.e(TAG, "broadcast() failed", e)
+            throw e
         } finally {
             state = BroadcastState.Idle
         }
@@ -73,8 +86,10 @@ class BroadcastOrchestrator @Inject constructor(
 
     private suspend fun safeSpeak(text: String, language: Language) {
         if (text.isBlank()) return
+        Log.d(TAG, "speak: \"${text.take(30)}\" [$language]")
         runCatching { ttsEngine.speak(text, language) }
             .onFailure { e ->
+                Log.e(TAG, "speak failed: ${e.message}")
                 if (e is CancellationException) throw e
             }
     }
