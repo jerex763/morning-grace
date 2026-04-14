@@ -18,7 +18,12 @@ android {
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":bible"))
+    implementation(project(":tts"))
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
     implementation(libs.kotlinx.coroutines.android)
+    testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
