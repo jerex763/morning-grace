@@ -4,18 +4,26 @@ import android.util.Log
 import com.morninggrace.bible.BibleRepository
 import com.morninggrace.bible.plan.BibleReadingPlan
 import com.morninggrace.core.model.Language
+import com.morninggrace.core.repository.FinanceRepository
+import com.morninggrace.core.repository.WeatherRepository
 import com.morninggrace.tts.TtsEngine
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 
 private const val TAG = "MorningGrace"
+private const val DEFAULT_LAT = -33.87
+private const val DEFAULT_LON = 151.21
 
 class BroadcastOrchestrator @Inject constructor(
     private val ttsEngine: TtsEngine,
     private val bibleRepo: BibleRepository,
-    private val readingPlan: BibleReadingPlan
+    private val readingPlan: BibleReadingPlan,
+    private val weatherRepo: WeatherRepository,
+    private val financeRepo: FinanceRepository
 ) {
 
     var state: BroadcastState = BroadcastState.Idle
@@ -45,7 +53,10 @@ class BroadcastOrchestrator @Inject constructor(
         state = BroadcastState.Idle
     }
 
-    private suspend fun prepare(date: LocalDate): BroadcastContent {
+    private suspend fun prepare(date: LocalDate): BroadcastContent = coroutineScope {
+        val weatherJob = async { weatherRepo.getCurrentWeather(DEFAULT_LAT, DEFAULT_LON) }
+        val financeJob = async { financeRepo.getSandP500() }
+
         val passages = readingPlan.getReadingForDate(date)
         val firstPassage = passages.firstOrNull()
 
@@ -65,12 +76,12 @@ class BroadcastOrchestrator @Inject constructor(
             "Bible reading unavailable"
         }
 
-        return BroadcastContent(
+        BroadcastContent(
             greeting = "早安，晨光播报开始。",
             bibleZh = bibleZh,
             bibleEn = bibleEn,
-            weather = "天气功能即将推出。",
-            finance = "财经功能即将推出。"
+            weather = weatherJob.await()?.toSpeechZh() ?: "天气功能暂时无法获取",
+            finance = financeJob.await()?.toSpeechZh() ?: "财经功能暂时无法获取"
         )
     }
 

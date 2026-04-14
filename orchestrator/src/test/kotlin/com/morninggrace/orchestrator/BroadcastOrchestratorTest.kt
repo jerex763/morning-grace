@@ -5,6 +5,8 @@ import com.morninggrace.bible.model.BiblePassage
 import com.morninggrace.bible.model.BibleVerse
 import com.morninggrace.bible.plan.McCheyneOnePlan
 import com.morninggrace.core.model.Language
+import com.morninggrace.core.repository.FinanceRepository
+import com.morninggrace.core.repository.WeatherRepository
 import com.morninggrace.tts.TtsEngine
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -21,8 +23,14 @@ class BroadcastOrchestratorTest {
     private val ttsEngine = mockk<TtsEngine>(relaxed = true)
     private val bibleRepo = mockk<BibleRepository>()
     private val plan = McCheyneOnePlan()
+    private val weatherRepo = mockk<WeatherRepository> {
+        coEvery { getCurrentWeather(any(), any()) } returns null
+    }
+    private val financeRepo = mockk<FinanceRepository> {
+        coEvery { getSandP500() } returns null
+    }
 
-    private val orchestrator = BroadcastOrchestrator(ttsEngine, bibleRepo, plan)
+    private val orchestrator = BroadcastOrchestrator(ttsEngine, bibleRepo, plan, weatherRepo, financeRepo)
 
     @Test
     fun `initial state is Idle`() {
