@@ -4,6 +4,7 @@ import android.util.Log
 import com.morninggrace.bible.BibleRepository
 import com.morninggrace.bible.plan.BibleReadingPlan
 import com.morninggrace.core.model.Language
+import com.morninggrace.core.model.LocationPrefs
 import com.morninggrace.core.repository.FinanceRepository
 import com.morninggrace.core.repository.WeatherRepository
 import com.morninggrace.tts.TtsEngine
@@ -15,15 +16,14 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 
 private const val TAG = "MorningGrace"
-private const val DEFAULT_LAT = -33.87
-private const val DEFAULT_LON = 151.21
 
 class BroadcastOrchestrator @Inject constructor(
     private val ttsEngine: TtsEngine,
     private val bibleRepo: BibleRepository,
     private val readingPlan: BibleReadingPlan,
     private val weatherRepo: WeatherRepository,
-    private val financeRepo: FinanceRepository
+    private val financeRepo: FinanceRepository,
+    private val locationPrefs: LocationPrefs
 ) {
 
     var state: BroadcastState = BroadcastState.Idle
@@ -54,7 +54,7 @@ class BroadcastOrchestrator @Inject constructor(
     }
 
     private suspend fun prepare(date: LocalDate): BroadcastContent = coroutineScope {
-        val weatherJob = async { weatherRepo.getCurrentWeather(DEFAULT_LAT, DEFAULT_LON) }
+        val weatherJob = async { weatherRepo.getCurrentWeather(locationPrefs.lat, locationPrefs.lon) }
         val financeJob = async { financeRepo.getSandP500() }
 
         val passages = readingPlan.getReadingForDate(date)
