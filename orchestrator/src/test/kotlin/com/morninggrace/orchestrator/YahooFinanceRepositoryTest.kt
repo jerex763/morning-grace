@@ -3,8 +3,6 @@ package com.morninggrace.orchestrator
 import com.morninggrace.orchestrator.finance.YahooFinanceRepository
 import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import okhttp3.Call
 import okhttp3.OkHttpClient
@@ -16,11 +14,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class YahooFinanceRepositoryTest {
 
     private val mockClient = mockk<OkHttpClient>()
-    private val repo = YahooFinanceRepository(mockClient, UnconfinedTestDispatcher())
+    private val repo = YahooFinanceRepository(mockClient)
 
     @Test
     fun `returns FinanceData on valid response`() = runTest {

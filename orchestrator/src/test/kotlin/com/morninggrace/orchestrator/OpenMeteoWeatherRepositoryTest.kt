@@ -3,8 +3,6 @@ package com.morninggrace.orchestrator
 import com.morninggrace.orchestrator.weather.OpenMeteoWeatherRepository
 import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import okhttp3.Call
 import okhttp3.OkHttpClient
@@ -16,11 +14,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class OpenMeteoWeatherRepositoryTest {
 
     private val mockClient = mockk<OkHttpClient>()
-    private val repo = OpenMeteoWeatherRepository(mockClient, UnconfinedTestDispatcher())
+    private val repo = OpenMeteoWeatherRepository(mockClient)
 
     @Test
     fun `returns WeatherData on valid response`() = runTest {

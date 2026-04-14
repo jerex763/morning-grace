@@ -2,7 +2,6 @@ package com.morninggrace.orchestrator.finance
 
 import com.morninggrace.core.model.FinanceData
 import com.morninggrace.core.repository.FinanceRepository
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -10,12 +9,11 @@ import okhttp3.Request
 import javax.inject.Inject
 
 class YahooFinanceRepository @Inject constructor(
-    private val client: OkHttpClient,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val client: OkHttpClient
 ) : FinanceRepository {
 
     override suspend fun getSandP500(): FinanceData? =
-        withContext(dispatcher) {
+        withContext(Dispatchers.IO) {
             runCatching {
                 val url = "https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=1d"
                 val request = Request.Builder()

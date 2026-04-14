@@ -1,0 +1,20 @@
+# Build outputs
+**/build/
+
+# Gradle
+.gradle/
+local.properties
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Android
+local.properties
+*.keystore
+*.jks
+
+# OS
+.DS_Store
