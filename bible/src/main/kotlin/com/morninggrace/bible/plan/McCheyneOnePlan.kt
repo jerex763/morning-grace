@@ -2,13 +2,14 @@ package com.morninggrace.bible.plan
 
 import com.morninggrace.bible.model.BiblePassage
 import java.time.LocalDate
+import javax.inject.Inject
 
 /**
  * McCheyne One-Year reading plan.
  * 4 passages per day (2 OT streams + 2 NT streams).
  * Day index is 1-based (Jan 1 = day 1). Leap year day 366 wraps to day 1.
  */
-class McCheyneOnePlan : BibleReadingPlan {
+class McCheyneOnePlan @Inject constructor() : BibleReadingPlan {
 
     override val id = "mccheyneone"
     override val nameZh = "麦大卫一年读经"

@@ -1,12 +1,18 @@
 package com.morninggrace.orchestrator.di
 
+import com.morninggrace.bible.plan.BibleReadingPlan
+import com.morninggrace.bible.plan.McCheyneOnePlan
+import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object OrchestratorModule {
-    // BroadcastOrchestrator uses @Inject constructor — nothing to provide manually.
-    // This module is a placeholder for future configuration (e.g., coroutine scope).
+abstract class OrchestratorModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindsBibleReadingPlan(impl: McCheyneOnePlan): BibleReadingPlan
 }
