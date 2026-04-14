@@ -21,9 +21,12 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
         ready = (status == TextToSpeech.SUCCESS)
     }
 
-    /** Must be called before [speak]. Attach to a Context and wait. */
-    fun attach(context: Context) {
-        tts = TextToSpeech(context) { status -> onInitResult(status) }
+    /** Must be called before [speak]. Suspends until TTS engine is initialised. */
+    suspend fun attach(context: Context) = suspendCancellableCoroutine<Unit> { cont ->
+        tts = TextToSpeech(context) { status ->
+            onInitResult(status)
+            if (cont.isActive) cont.resume(Unit)
+        }
     }
 
     fun detach() {

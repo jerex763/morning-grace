@@ -35,7 +35,6 @@ class AlarmService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        ttsEngine.attach(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -47,6 +46,7 @@ class AlarmService : Service() {
         startForeground(NOTIFICATION_ID, buildNotification())
 
         serviceScope.launch {
+            ttsEngine.attach(this@AlarmService)  // suspends until TTS ready
             morningSession.start()
             stopSelf()
         }
