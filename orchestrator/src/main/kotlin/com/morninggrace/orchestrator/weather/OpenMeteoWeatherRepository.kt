@@ -20,8 +20,12 @@ class OpenMeteoWeatherRepository @Inject constructor(
                 val url = "https://api.open-meteo.com/v1/forecast" +
                     "?latitude=$lat&longitude=$lon" +
                     "&current=temperature_2m,weather_code&timezone=auto"
-                val response = client.newCall(Request.Builder().url(url).build()).execute()
-                val body = response.body?.string() ?: return@runCatching null
+                val body = client.newCall(Request.Builder().url(url).build())
+                    .execute()
+                    .use { response ->
+                        if (!response.isSuccessful) return@runCatching null
+                        response.body?.string()
+                    } ?: return@runCatching null
                 val temp = Regex(""""temperature_2m"\s*:\s*([\d.]+)""").find(body)
                     ?.groupValues?.get(1)?.toDoubleOrNull() ?: return@runCatching null
                 val code = Regex(""""weather_code"\s*:\s*(\d+)""").find(body)
