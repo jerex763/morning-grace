@@ -14,6 +14,20 @@
         android:paddingTop="56dp"
         android:paddingBottom="32dp">
 
+        <!-- Network banner (hidden when connected) -->
+        <TextView
+            android:id="@+id/networkBanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📵  无网络连接，部分播报内容将使用缓存"
+            android:textSize="13sp"
+            android:textColor="#FFFFFF"
+            android:background="@color/warning"
+            android:padding="10dp"
+            android:gravity="center"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone" />
+
         <!-- Header -->
         <TextView
             android:layout_width="wrap_content"
@@ -109,6 +123,110 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- ── Modules Card ── -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp"
+            app:cardBackgroundColor="@color/bg_card">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="播报内容"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:layout_marginBottom="12dp" />
+
+                <CheckBox
+                    android:id="@+id/moduleWeather"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🌤  天气播报"
+                    android:textSize="15sp"
+                    android:textColor="@color/text_label"
+                    android:checked="true"
+                    android:layout_marginBottom="4dp" />
+
+                <CheckBox
+                    android:id="@+id/moduleBible"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="📖  圣经读经"
+                    android:textSize="15sp"
+                    android:textColor="@color/text_label"
+                    android:checked="true"
+                    android:layout_marginBottom="2dp" />
+
+                <!-- Reading plan — indented, shown only when Bible is checked -->
+                <RadioGroup
+                    android:id="@+id/planRadioGroup"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingStart="36dp"
+                    android:layout_marginBottom="8dp">
+
+                    <RadioButton
+                        android:id="@+id/planMcCheyne"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="麦大卫一年读经"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_secondary"
+                        android:layout_marginBottom="2dp" />
+
+                    <RadioButton
+                        android:id="@+id/planSequential"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="顺序读经（创世记 → 启示录）"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_secondary"
+                        android:layout_marginBottom="2dp" />
+
+                    <RadioButton
+                        android:id="@+id/planChapterADay"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="每天一章"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_secondary" />
+
+                </RadioGroup>
+
+                <CheckBox
+                    android:id="@+id/moduleFinance"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="📈  财经行情"
+                    android:textSize="15sp"
+                    android:textColor="@color/text_label"
+                    android:checked="true"
+                    android:layout_marginBottom="4dp" />
+
+                <CheckBox
+                    android:id="@+id/moduleNews"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="📰  新闻头条"
+                    android:textSize="15sp"
+                    android:textColor="@color/text_label"
+                    android:checked="true" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- ── Location Card ── -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -155,7 +273,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- ── Reading Plan Card ── -->
+        <!-- ── AI Card ── -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -174,45 +292,44 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="读经计划"
+                    android:text="🤖  AI 语音对话"
                     android:textSize="17sp"
                     android:textStyle="bold"
                     android:textColor="@color/text_primary"
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="播报结束后进入 AI 对话，需要 Gemini API Key"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_secondary"
                     android:layout_marginBottom="12dp" />
 
-                <RadioGroup
-                    android:id="@+id/planRadioGroup"
+                <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:hint="Gemini API Key"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense">
 
-                    <RadioButton
-                        android:id="@+id/planMcCheyne"
-                        android:layout_width="wrap_content"
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/geminiApiKeyInput"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="麦大卫一年读经"
-                        android:textSize="15sp"
-                        android:textColor="@color/text_label"
-                        android:layout_marginBottom="4dp" />
+                        android:inputType="textPassword"
+                        android:imeOptions="actionDone"
+                        android:textSize="13sp" />
 
-                    <RadioButton
-                        android:id="@+id/planSequential"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="顺序读经（创世记 → 启示录）"
-                        android:textSize="15sp"
-                        android:textColor="@color/text_label"
-                        android:layout_marginBottom="4dp" />
+                </com.google.android.material.textfield.TextInputLayout>
 
-                    <RadioButton
-                        android:id="@+id/planChapterADay"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="每天一章"
-                        android:textSize="15sp"
-                        android:textColor="@color/text_label" />
-
-                </RadioGroup>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/saveApiKeyButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="保存"
+                    android:textSize="14sp"
+                    app:backgroundTint="@color/accent" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -240,15 +357,6 @@
                     android:textStyle="bold"
                     android:textColor="@color/accent_dev"
                     android:letterSpacing="0.05"
-                    android:layout_marginBottom="12dp" />
-
-                <CheckBox
-                    android:id="@+id/skipBibleCheckbox"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="跳过读经"
-                    android:textSize="14sp"
-                    android:textColor="@color/text_label"
                     android:layout_marginBottom="12dp" />
 
                 <com.google.android.material.button.MaterialButton

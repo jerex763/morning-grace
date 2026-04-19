@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import com.morninggrace.core.model.BroadcastConfig
 import com.morninggrace.orchestrator.MorningSession
 import com.morninggrace.tts.AndroidTtsEngine
 import dagger.hilt.android.AndroidEntryPoint
@@ -23,10 +24,15 @@ import javax.inject.Inject
 class AlarmService : Service() {
 
     companion object {
-        const val CHANNEL_ID = "morning_grace_alarm"
+        const val CHANNEL_ID      = "morning_grace_alarm"
         const val NOTIFICATION_ID = 1
-        const val ACTION_STOP = "STOP"
-        const val EXTRA_SKIP_BIBLE = "skip_bible"
+        const val ACTION_STOP     = "STOP"
+
+        // SharedPrefs keys for module toggles (default: all enabled)
+        const val KEY_MODULE_WEATHER = "module_weather"
+        const val KEY_MODULE_BIBLE   = "module_bible"
+        const val KEY_MODULE_FINANCE = "module_finance"
+        const val KEY_MODULE_NEWS    = "module_news"
     }
 
     @Inject lateinit var morningSession: MorningSession
@@ -46,14 +52,21 @@ class AlarmService : Service() {
             return START_NOT_STICKY
         }
 
-        val skipBible = intent?.getBooleanExtra(EXTRA_SKIP_BIBLE, false) ?: false
+        val prefs = getSharedPreferences(AlarmReceiver.PREFS, MODE_PRIVATE)
+        val config = BroadcastConfig(
+            skipWeather = !prefs.getBoolean(KEY_MODULE_WEATHER, true),
+            skipBible   = !prefs.getBoolean(KEY_MODULE_BIBLE,   true),
+            skipFinance = !prefs.getBoolean(KEY_MODULE_FINANCE, true),
+            skipNews    = !prefs.getBoolean(KEY_MODULE_NEWS,    true)
+        )
+
         startForeground(NOTIFICATION_ID, buildNotification())
 
         broadcastJob = serviceScope.launch {
-            android.util.Log.d("MorningGrace", "AlarmService: attaching TTS (skipBible=$skipBible)")
+            android.util.Log.d("MorningGrace", "AlarmService: attaching TTS")
             ttsEngine.attach(this@AlarmService)
             android.util.Log.d("MorningGrace", "AlarmService: TTS attached, starting session")
-            morningSession.start(skipBible = skipBible)
+            morningSession.start(config)
             android.util.Log.d("MorningGrace", "AlarmService: session done")
             stopSelf()
         }
@@ -78,9 +91,7 @@ class AlarmService : Service() {
     }
 
     private fun buildNotification(): Notification {
-        val stopIntent = Intent(this, AlarmService::class.java).apply {
-            action = ACTION_STOP
-        }
+        val stopIntent = Intent(this, AlarmService::class.java).apply { action = ACTION_STOP }
         val stopPending = PendingIntent.getService(
             this, 0, stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -99,7 +110,6 @@ class AlarmService : Service() {
             CHANNEL_ID, "Morning Grace Alarm",
             NotificationManager.IMPORTANCE_HIGH
         ).apply { description = "Morning Grace daily alarm" }
-        getSystemService(NotificationManager::class.java)
-            .createNotificationChannel(channel)
+        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 }

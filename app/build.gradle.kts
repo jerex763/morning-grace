@@ -31,6 +31,7 @@ dependencies {
     implementation(project(":orchestrator"))
     implementation(project(":bible"))
     implementation(project(":tts"))
+    implementation(project(":ai"))
     implementation(libs.android.core.ktx)
     implementation(libs.appcompat)
     implementation(libs.material)

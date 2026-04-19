@@ -81,6 +81,57 @@ class AndroidSpeechEngine @Inject constructor(
         }
     }
 
+    override suspend fun listenForText(timeoutMs: Long): String? {
+        if (!isAvailable()) {
+            Log.w(TAG, "SpeechRecognizer not available")
+            return null
+        }
+        return withContext(Dispatchers.Main) {
+            delay(500)
+            withTimeoutOrNull(timeoutMs) {
+                suspendCancellableCoroutine { cont ->
+                    val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
+                    recognizer.setRecognitionListener(object : RecognitionListener {
+                        override fun onReadyForSpeech(params: Bundle?) {}
+                        override fun onBeginningOfSpeech() {}
+                        override fun onRmsChanged(rmsdB: Float) {}
+                        override fun onBufferReceived(buffer: ByteArray?) {}
+                        override fun onEndOfSpeech() {}
+                        override fun onPartialResults(partialResults: Bundle?) {}
+                        override fun onEvent(eventType: Int, params: Bundle?) {}
+
+                        override fun onResults(results: Bundle?) {
+                            val text = results
+                                ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                                ?.firstOrNull()
+                            recognizer.destroy()
+                            if (cont.isActive) cont.resume(text)
+                        }
+
+                        override fun onError(error: Int) {
+                            Log.w(TAG, "SpeechRecognizer error: $error")
+                            recognizer.destroy()
+                            if (cont.isActive) cont.resume(null)
+                        }
+                    })
+
+                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "zh-CN")
+                        putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+                        putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, false)
+                    }
+                    recognizer.startListening(intent)
+
+                    cont.invokeOnCancellation {
+                        recognizer.stopListening()
+                        recognizer.destroy()
+                    }
+                }
+            }
+        }
+    }
+
     private fun classify(matches: List<String>?): ConfirmationResult {
         if (matches.isNullOrEmpty()) return ConfirmationResult.Timeout
         val text = matches.joinToString(" ")

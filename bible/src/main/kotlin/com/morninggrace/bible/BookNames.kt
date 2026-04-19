@@ -34,6 +34,14 @@ private fun chapterToZh(n: Int): String {
         n == 10 -> "十"
         n < 20  -> "十${ones[n % 10]}"
         n < 100 -> "${ones[n / 10]}十${if (n % 10 > 0) ones[n % 10] else ""}"
-        else    -> "一百${if (n % 100 > 0) chapterToZh(n % 100) else ""}"
+        else    -> {
+            val rem = n % 100
+            "一百" + when {
+                rem == 0 -> ""
+                rem < 10 -> "零${ones[rem]}"
+                rem < 20 -> "一十${if (rem % 10 > 0) ones[rem % 10] else ""}"
+                else     -> chapterToZh(rem)
+            }
+        }
     }
 }

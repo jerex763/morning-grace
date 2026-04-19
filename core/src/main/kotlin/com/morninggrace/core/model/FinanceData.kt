@@ -39,7 +39,9 @@ fun toChineseNumber(n: Int): String {
     if (yi > 0)  { sb.append(below10000(yi));  sb.append("亿") }
     if (wan > 0) {
         if (yi > 0 && wan < 1000) sb.append("零")
-        sb.append(below10000(wan)); sb.append("万")
+        val wanStr = below10000(wan)
+        sb.append(if (wanStr == "二") "两" else wanStr)
+        sb.append("万")
     }
     if (rest > 0) {
         if ((yi > 0 || wan > 0) && rest < 1000) sb.append("零")
@@ -58,7 +60,10 @@ private fun below10000(n: Int): String {
     if (qian > 0) { sb.append(if (qian == 2) "两" else DIGITS[qian]); sb.append("千") }
     if (bai  > 0) { sb.append(if (bai == 2) "两" else DIGITS[bai]); sb.append("百") }
     else if (qian > 0 && (shi > 0 || ge > 0)) sb.append("零")
-    if (shi  > 0) { sb.append(DIGITS[shi]);  sb.append("十") }
+    if (shi  > 0) {
+        if (shi == 1 && qian == 0 && bai == 0) sb.append("十")
+        else { sb.append(DIGITS[shi]); sb.append("十") }
+    }
     else if (bai > 0 && ge > 0) sb.append("零")
     if (ge   > 0) sb.append(DIGITS[ge])
     return sb.toString()

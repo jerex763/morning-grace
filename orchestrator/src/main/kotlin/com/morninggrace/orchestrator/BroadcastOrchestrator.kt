@@ -1,9 +1,11 @@
 package com.morninggrace.orchestrator
 
 import android.util.Log
+import com.morninggrace.ai.ConversationManager
 import com.morninggrace.bible.BibleRepository
 import com.morninggrace.bible.plan.BibleReadingPlan
 import com.morninggrace.bible.toChineseTitle
+import com.morninggrace.core.model.BroadcastConfig
 import com.morninggrace.core.model.ConfirmationResult
 import com.morninggrace.core.model.Language
 import com.morninggrace.core.repository.FinanceRepository
@@ -29,24 +31,27 @@ class BroadcastOrchestrator @Inject constructor(
     private val financeRepo: FinanceRepository,
     private val newsRepo: NewsRepository,
     private val locationRepo: LocationRepository,
-    private val speechEngine: SpeechEngine
+    private val speechEngine: SpeechEngine,
+    private val conversationManager: ConversationManager
 ) {
 
     var state: BroadcastState = BroadcastState.Idle
         private set
 
-    suspend fun broadcast(date: LocalDate = LocalDate.now(), skipBible: Boolean = false) {
+    suspend fun broadcast(date: LocalDate = LocalDate.now(), config: BroadcastConfig = BroadcastConfig()) {
         var waited = 0
         while (!ttsEngine.isAvailable() && waited < 30) { delay(100); waited++ }
         Log.d(TAG, "broadcast() started, ttsAvailable=${ttsEngine.isAvailable()}, waited=${waited * 100}ms")
         state = BroadcastState.Preparing
         try {
-            val content = prepare(date, skipBible)
+            val content = prepare(date, config)
             state = BroadcastState.Broadcasting(content)
 
             Log.d(TAG, "deliver() starting")
-            deliver(content, skipBible)
+            deliver(content, config)
             Log.d(TAG, "deliver() done")
+
+            conversationManager.startConversation(buildSystemPrompt(content))
         } catch (e: Exception) {
             Log.e(TAG, "broadcast() failed", e)
             throw e
@@ -60,15 +65,15 @@ class BroadcastOrchestrator @Inject constructor(
         state = BroadcastState.Idle
     }
 
-    private suspend fun prepare(date: LocalDate, skipBible: Boolean): BroadcastContent = coroutineScope {
+    private suspend fun prepare(date: LocalDate, config: BroadcastConfig): BroadcastContent = coroutineScope {
         val location = locationRepo.get()
         val weatherJob = async { weatherRepo.getCurrentWeather(location.lat, location.lon) }
         val financeJob = async { financeRepo.getMarketData() }
         val newsJob    = async { newsRepo.getTopHeadlines(3) }
 
         Log.d(TAG, "prepare() loading bible plan for $date")
-        val passage = if (!skipBible) readingPlan.getReadingForDate(date).firstOrNull() else null
-        Log.d(TAG, "prepare() bible passage: $passage (skipBible=$skipBible)")
+        val passage = if (!config.skipBible) readingPlan.getReadingForDate(date).firstOrNull() else null
+        Log.d(TAG, "prepare() bible passage: $passage (skipBible=${config.skipBible})")
 
         val passageName = passage?.toChineseTitle() ?: ""
 
@@ -76,13 +81,13 @@ class BroadcastOrchestrator @Inject constructor(
             bibleRepo.getVersesForPassage(passage, "zh")
                 .joinToString(" ") { it.text }
                 .ifBlank { "今日经文暂不可用" }
-        } else if (skipBible) "" else "今日经文暂不可用"
+        } else if (config.skipBible) "" else "今日经文暂不可用"
 
         val bibleEn = if (passage != null) {
             bibleRepo.getVersesForPassage(passage, "en")
                 .joinToString(" ") { it.text }
                 .ifBlank { "Bible reading unavailable" }
-        } else if (skipBible) "" else "Bible reading unavailable"
+        } else if (config.skipBible) "" else "Bible reading unavailable"
 
         Log.d(TAG, "prepare() bible done")
 
@@ -111,12 +116,13 @@ class BroadcastOrchestrator @Inject constructor(
         )
     }
 
-    private suspend fun deliver(content: BroadcastContent, skipBible: Boolean = false) {
+    private suspend fun deliver(content: BroadcastContent, config: BroadcastConfig) {
         safeSpeak(content.greeting, Language.ZH)
-        safeSpeak(content.weather, Language.ZH)
+
+        if (!config.skipWeather) safeSpeak(content.weather, Language.ZH)
 
         val actuallySkipBible = when {
-            skipBible -> true
+            config.skipBible -> true
             content.passageName.isBlank() -> false
             else -> {
                 safeSpeak("今天读经是${content.passageName}，请确认或跳过", Language.ZH)
@@ -129,13 +135,30 @@ class BroadcastOrchestrator @Inject constructor(
         if (!actuallySkipBible && content.bibleZh.isNotBlank()) {
             safeSpeak(content.bibleZh, Language.ZH)
             safeSpeak(content.bibleEn, Language.EN)
-            safeSpeak("今日读经结束，接下来是财经播报。", Language.ZH)
+            if (!config.skipFinance || !config.skipNews) {
+                safeSpeak("今日读经结束。", Language.ZH)
+            }
         }
-        safeSpeak("今日市场行情：", Language.ZH)
-        safeSpeak(content.marketSummary, Language.ZH)
-        safeSpeak("今日财经头条：", Language.ZH)
-        safeSpeak(content.newsSummary, Language.ZH)
+
+        if (!config.skipFinance) {
+            safeSpeak("今日市场行情：", Language.ZH)
+            safeSpeak(content.marketSummary, Language.ZH)
+        }
+
+        if (!config.skipNews) {
+            safeSpeak("今日财经头条：", Language.ZH)
+            safeSpeak(content.newsSummary, Language.ZH)
+        }
+
         safeSpeak("晨光播报结束，愿你今天蒙福。", Language.ZH)
+    }
+
+    private fun buildSystemPrompt(content: BroadcastContent): String = buildString {
+        appendLine("你是晨光播报助手，帮助海外华人开始新的一天。请用简洁、温暖的中文回答。")
+        appendLine("今日天气：${content.weather}")
+        if (content.passageName.isNotBlank()) appendLine("今日读经：${content.passageName}")
+        appendLine("今日行情：${content.marketSummary}")
+        appendLine("今日头条：${content.newsSummary}")
     }
 
     private suspend fun safeSpeak(text: String, language: Language) {

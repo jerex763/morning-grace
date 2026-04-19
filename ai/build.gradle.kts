@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.morninggrace.orchestrator"
+    namespace = "com.morninggrace.ai"
     compileSdk = 34
     defaultConfig { minSdk = 26 }
     compileOptions {
@@ -19,9 +19,7 @@ android {
 
 dependencies {
     implementation(project(":core"))
-    implementation(project(":bible"))
     implementation(project(":tts"))
-    implementation(project(":ai"))
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
     implementation(libs.kotlinx.coroutines.android)
@@ -29,5 +27,4 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.org.json)
 }

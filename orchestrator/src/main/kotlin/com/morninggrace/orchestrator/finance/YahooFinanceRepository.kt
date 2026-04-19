@@ -8,6 +8,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONObject
 import javax.inject.Inject
 
 class YahooFinanceRepository @Inject constructor(
@@ -38,13 +39,21 @@ class YahooFinanceRepository @Inject constructor(
                     response.body?.string()
                 } ?: return@runCatching null
 
-                val price = extractDouble(body, "regularMarketPrice") ?: return@runCatching null
-                val prevClose = extractDouble(body, "chartPreviousClose") ?: return@runCatching null
+                val (price, prevClose) = parsePrices(body) ?: return@runCatching null
                 val changePct = ((price - prevClose) / prevClose) * 100
                 FinanceData(indexName = name, price = price, changePercent = changePct)
             }.getOrNull()
         }
 
-    private fun extractDouble(json: String, key: String): Double? =
-        Regex(""""$key"\s*:\s*([\d.]+)""").find(json)?.groupValues?.get(1)?.toDoubleOrNull()
+    private fun parsePrices(body: String): Pair<Double, Double>? = runCatching {
+        val meta = JSONObject(body)
+            .getJSONObject("chart")
+            .getJSONArray("result")
+            .getJSONObject(0)
+            .getJSONObject("meta")
+        val price     = meta.optDouble("regularMarketPrice")
+        val prevClose = meta.optDouble("chartPreviousClose")
+        if (price.isNaN() || prevClose.isNaN() || prevClose == 0.0) return null
+        price to prevClose
+    }.getOrNull()
 }
