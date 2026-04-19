@@ -35,4 +35,24 @@
         android:textColor="#FF6B35"
         android:visibility="gone" />
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="32dp"
+        android:layout_marginBottom="16dp"
+        android:background="#DDDDDD" />
+
+    <CheckBox
+        android:id="@+id/skipBibleCheckbox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="跳过读经（测试用）" />
+
+    <Button
+        android:id="@+id/testBroadcastButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="立即测试播报" />
+
 </LinearLayout>

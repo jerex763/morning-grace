@@ -8,6 +8,8 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.View
+import android.widget.Button
+import android.widget.CheckBox
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.TimePicker
@@ -16,6 +18,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.morninggrace.alarm.AlarmPermissionChecker
 import com.morninggrace.alarm.AlarmScheduler
+import com.morninggrace.alarm.AlarmService
 import com.morninggrace.core.model.AlarmConfig
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -65,6 +68,14 @@ class MainActivity : AppCompatActivity() {
                 .putBoolean("enabled", enabled)
                 .apply()
             if (enabled) scheduler.schedule(config) else scheduler.cancel()
+        }
+
+        val skipBibleCheckbox = findViewById<CheckBox>(R.id.skipBibleCheckbox)
+        findViewById<Button>(R.id.testBroadcastButton).setOnClickListener {
+            val intent = Intent(this, AlarmService::class.java).apply {
+                putExtra(AlarmService.EXTRA_SKIP_BIBLE, skipBibleCheckbox.isChecked)
+            }
+            ContextCompat.startForegroundService(this, intent)
         }
     }
 

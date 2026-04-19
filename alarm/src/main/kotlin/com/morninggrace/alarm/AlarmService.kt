@@ -25,6 +25,7 @@ class AlarmService : Service() {
         const val CHANNEL_ID = "morning_grace_alarm"
         const val NOTIFICATION_ID = 1
         const val ACTION_STOP = "STOP"
+        const val EXTRA_SKIP_BIBLE = "skip_bible"
     }
 
     @Inject lateinit var morningSession: MorningSession
@@ -43,13 +44,14 @@ class AlarmService : Service() {
             return START_NOT_STICKY
         }
 
+        val skipBible = intent?.getBooleanExtra(EXTRA_SKIP_BIBLE, false) ?: false
         startForeground(NOTIFICATION_ID, buildNotification())
 
         serviceScope.launch {
-            android.util.Log.d("MorningGrace", "AlarmService: attaching TTS")
-            ttsEngine.attach(this@AlarmService)  // suspends until TTS ready
+            android.util.Log.d("MorningGrace", "AlarmService: attaching TTS (skipBible=$skipBible)")
+            ttsEngine.attach(this@AlarmService)
             android.util.Log.d("MorningGrace", "AlarmService: TTS attached, starting session")
-            morningSession.start()
+            morningSession.start(skipBible = skipBible)
             android.util.Log.d("MorningGrace", "AlarmService: session done")
             stopSelf()
         }

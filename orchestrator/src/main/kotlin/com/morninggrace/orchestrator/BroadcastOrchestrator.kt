@@ -31,13 +31,13 @@ class BroadcastOrchestrator @Inject constructor(
     var state: BroadcastState = BroadcastState.Idle
         private set
 
-    suspend fun broadcast(date: LocalDate = LocalDate.now()) {
+    suspend fun broadcast(date: LocalDate = LocalDate.now(), skipBible: Boolean = false) {
         var waited = 0
         while (!ttsEngine.isAvailable() && waited < 30) { delay(100); waited++ }
         Log.d(TAG, "broadcast() started, ttsAvailable=${ttsEngine.isAvailable()}, waited=${waited * 100}ms")
         state = BroadcastState.Preparing
         try {
-            val content = prepare(date)
+            val content = prepare(date, skipBible)
             state = BroadcastState.Broadcasting(content)
             Log.d(TAG, "deliver() starting")
             deliver(content)
@@ -54,26 +54,26 @@ class BroadcastOrchestrator @Inject constructor(
         state = BroadcastState.Idle
     }
 
-    private suspend fun prepare(date: LocalDate): BroadcastContent = coroutineScope {
+    private suspend fun prepare(date: LocalDate, skipBible: Boolean): BroadcastContent = coroutineScope {
         val weatherJob = async { weatherRepo.getCurrentWeather(locationPrefs.lat, locationPrefs.lon) }
         val financeJob = async { financeRepo.getMarketData() }
         val newsJob    = async { newsRepo.getTopHeadlines(3) }
 
         Log.d(TAG, "prepare() loading bible plan for $date")
-        val passage = readingPlan.getReadingForDate(date).firstOrNull()
-        Log.d(TAG, "prepare() bible passage: $passage")
+        val passage = if (!skipBible) readingPlan.getReadingForDate(date).firstOrNull() else null
+        Log.d(TAG, "prepare() bible passage: $passage (skipBible=$skipBible)")
 
         val bibleZh = if (passage != null) {
             bibleRepo.getVersesForPassage(passage, "zh")
                 .joinToString(" ") { it.text }
                 .ifBlank { "今日经文暂不可用" }
-        } else "今日经文暂不可用"
+        } else if (skipBible) "" else "今日经文暂不可用"
 
         val bibleEn = if (passage != null) {
             bibleRepo.getVersesForPassage(passage, "en")
                 .joinToString(" ") { it.text }
                 .ifBlank { "Bible reading unavailable" }
-        } else "Bible reading unavailable"
+        } else if (skipBible) "" else "Bible reading unavailable"
 
         Log.d(TAG, "prepare() bible done")
 
