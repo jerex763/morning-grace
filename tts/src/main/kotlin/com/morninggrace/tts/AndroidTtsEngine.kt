@@ -48,7 +48,10 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
         val engine = requireNotNull(tts) { "AndroidTtsEngine not attached" }
         require(ready) { "AndroidTtsEngine not ready" }
 
-        val locale = Locale.ENGLISH // TODO: restore ZH after TTS voice pack confirmed
+        val locale = when (language) {
+            Language.ZH -> Locale.CHINESE
+            Language.EN -> Locale.ENGLISH
+        }
         engine.language = locale
 
         val utteranceId = UUID.randomUUID().toString()
