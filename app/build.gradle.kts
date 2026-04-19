@@ -33,6 +33,7 @@ dependencies {
     implementation(project(":tts"))
     implementation(libs.android.core.ktx)
     implementation(libs.appcompat)
+    implementation(libs.material)
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
     implementation(libs.play.services.location)

@@ -15,7 +15,7 @@
     <application
         android:name=".MorningGraceApp"
         android:label="Morning Grace"
-        android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
+        android:theme="@style/Theme.MorningGrace">
 
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>

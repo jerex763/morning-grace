@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_page">#F2F2F7</color>
+    <color name="bg_card">#FFFFFF</color>
+    <color name="bg_card_dev">#FFF8F2</color>
+
+    <color name="text_primary">#1C1C1E</color>
+    <color name="text_secondary">#8E8E93</color>
+    <color name="text_label">#3C3C43</color>
+
+    <color name="accent">#5B7FDB</color>
+    <color name="accent_dev">#FF9500</color>
+    <color name="warning">#FF6B35</color>
+
+    <color name="colorPrimary">#5B7FDB</color>
+    <color name="colorPrimaryVariant">#3A5CB8</color>
+    <color name="colorOnPrimary">#FFFFFF</color>
+    <color name="colorSecondary">#5B7FDB</color>
+    <color name="colorOnSecondary">#FFFFFF</color>
+    <color name="colorSurface">#FFFFFF</color>
+    <color name="colorOnSurface">#1C1C1E</color>
+    <color name="colorBackground">#F2F2F7</color>
+    <color name="colorOnBackground">#1C1C1E</color>
+</resources>
