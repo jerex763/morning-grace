@@ -3,8 +3,10 @@ package com.morninggrace.orchestrator.di
 import com.morninggrace.bible.plan.BibleReadingPlan
 import com.morninggrace.bible.plan.McCheyneOnePlan
 import com.morninggrace.core.repository.FinanceRepository
+import com.morninggrace.core.repository.NewsRepository
 import com.morninggrace.core.repository.WeatherRepository
 import com.morninggrace.orchestrator.finance.YahooFinanceRepository
+import com.morninggrace.orchestrator.news.RssNewsRepository
 import com.morninggrace.orchestrator.weather.OpenMeteoWeatherRepository
 import dagger.Binds
 import dagger.Module
@@ -28,11 +30,14 @@ abstract class OrchestratorModule {
     @Binds @Singleton
     abstract fun bindsFinanceRepository(impl: YahooFinanceRepository): FinanceRepository
 
+    @Binds @Singleton
+    abstract fun bindsNewsRepository(impl: RssNewsRepository): NewsRepository
+
     companion object {
         @Provides @Singleton
         fun providesOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
-                .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(15, TimeUnit.SECONDS)
-                .build()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .build()
     }
 }

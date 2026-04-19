@@ -6,6 +6,7 @@ import com.morninggrace.bible.plan.BibleReadingPlan
 import com.morninggrace.core.model.Language
 import com.morninggrace.core.model.LocationPrefs
 import com.morninggrace.core.repository.FinanceRepository
+import com.morninggrace.core.repository.NewsRepository
 import com.morninggrace.core.repository.WeatherRepository
 import com.morninggrace.tts.TtsEngine
 import java.time.LocalDate
@@ -23,6 +24,7 @@ class BroadcastOrchestrator @Inject constructor(
     private val readingPlan: BibleReadingPlan,
     private val weatherRepo: WeatherRepository,
     private val financeRepo: FinanceRepository,
+    private val newsRepo: NewsRepository,
     private val locationPrefs: LocationPrefs
 ) {
 
@@ -30,7 +32,6 @@ class BroadcastOrchestrator @Inject constructor(
         private set
 
     suspend fun broadcast(date: LocalDate = LocalDate.now()) {
-        // Wait up to 3s for TTS to be ready (onInit can be async on some devices)
         var waited = 0
         while (!ttsEngine.isAvailable() && waited < 30) { delay(100); waited++ }
         Log.d(TAG, "broadcast() started, ttsAvailable=${ttsEngine.isAvailable()}, waited=${waited * 100}ms")
@@ -54,43 +55,49 @@ class BroadcastOrchestrator @Inject constructor(
     }
 
     private suspend fun prepare(date: LocalDate): BroadcastContent = coroutineScope {
-        // TODO: re-enable after TTS confirmed working
-        // val weatherJob = async { weatherRepo.getCurrentWeather(locationPrefs.lat, locationPrefs.lon) }
-        // val financeJob = async { financeRepo.getSandP500() }
+        val weatherJob = async { weatherRepo.getCurrentWeather(locationPrefs.lat, locationPrefs.lon) }
+        val financeJob = async { financeRepo.getMarketData() }
+        val newsJob    = async { newsRepo.getTopHeadlines(3) }
 
         Log.d(TAG, "prepare() loading bible plan for $date")
-        val passages = readingPlan.getReadingForDate(date)
-        val firstPassage = passages.firstOrNull()
-        Log.d(TAG, "prepare() bible passage: $firstPassage")
+        val passage = readingPlan.getReadingForDate(date).firstOrNull()
+        Log.d(TAG, "prepare() bible passage: $passage")
 
-        val bibleZh = if (firstPassage != null) {
-            Log.d(TAG, "prepare() fetching zh verses")
-            bibleRepo.getVersesForPassage(firstPassage, "zh")
+        val bibleZh = if (passage != null) {
+            bibleRepo.getVersesForPassage(passage, "zh")
                 .joinToString(" ") { it.text }
                 .ifBlank { "今日经文暂不可用" }
-        } else {
-            "今日经文暂不可用"
-        }
+        } else "今日经文暂不可用"
 
-        val bibleEn = if (firstPassage != null) {
-            Log.d(TAG, "prepare() fetching en verses")
-            bibleRepo.getVersesForPassage(firstPassage, "en")
+        val bibleEn = if (passage != null) {
+            bibleRepo.getVersesForPassage(passage, "en")
                 .joinToString(" ") { it.text }
                 .ifBlank { "Bible reading unavailable" }
-        } else {
-            "Bible reading unavailable"
-        }
+        } else "Bible reading unavailable"
+
         Log.d(TAG, "prepare() bible done")
 
-        val weather = "天气功能暂时无法获取"
-        val finance = "财经功能暂时无法获取"
+        val weather = weatherJob.await()?.toSpeechZh() ?: "天气暂时无法获取"
+
+        val marketList = financeJob.await()
+        val marketSummary = if (marketList.isEmpty()) "市场数据暂时无法获取"
+        else marketList.joinToString("；") { it.toSpeechZh() }
+
+        val newsList = newsJob.await()
+        val newsSummary = if (newsList.isEmpty()) "新闻暂时无法获取"
+        else newsList.joinToString("。") { it.title }
+
+        Log.d(TAG, "prepare() weather=$weather")
+        Log.d(TAG, "prepare() market=$marketSummary")
+        Log.d(TAG, "prepare() news=$newsSummary")
 
         BroadcastContent(
             greeting = "早安，晨光播报开始。",
+            weather = weather,
             bibleZh = bibleZh,
             bibleEn = bibleEn,
-            weather = weather,
-            finance = finance
+            marketSummary = marketSummary,
+            newsSummary = newsSummary
         )
     }
 
@@ -100,7 +107,10 @@ class BroadcastOrchestrator @Inject constructor(
         safeSpeak("今日读经：", Language.ZH)
         safeSpeak(content.bibleZh, Language.ZH)
         safeSpeak(content.bibleEn, Language.EN)
-        safeSpeak(content.finance, Language.ZH)
+        safeSpeak("今日市场行情：", Language.ZH)
+        safeSpeak(content.marketSummary, Language.ZH)
+        safeSpeak("今日财经头条：", Language.ZH)
+        safeSpeak(content.newsSummary, Language.ZH)
         safeSpeak("晨光播报结束，愿你今天蒙福。", Language.ZH)
     }
 

@@ -11,7 +11,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class YahooFinanceRepositoryTest {
@@ -19,46 +19,51 @@ class YahooFinanceRepositoryTest {
     private val mockClient = mockk<OkHttpClient>()
     private val repo = YahooFinanceRepository(mockClient)
 
-    @Test
-    fun `returns FinanceData on valid response`() = runTest {
-        val json = """{"chart":{"result":[{"meta":{"regularMarketPrice":5000.0,"chartPreviousClose":4900.0}}]}}"""
-        val mockCall = mockk<Call>()
+    private fun mockResponse(json: String): Call {
+        val call = mockk<Call>()
         val response = Response.Builder()
             .request(Request.Builder().url("https://query1.finance.yahoo.com").build())
             .protocol(Protocol.HTTP_1_1)
-            .code(200)
-            .message("OK")
+            .code(200).message("OK")
             .body(json.toResponseBody())
             .build()
-        every { mockClient.newCall(any()) } returns mockCall
-        every { mockCall.execute() } returns response
-
-        val result = repo.getSandP500()
-
-        assertEquals("标普500", result?.indexName)
-        assertEquals(5000.0, result?.price!!, 0.001)
-        val expectedPct = ((5000.0 - 4900.0) / 4900.0) * 100
-        assertEquals(expectedPct, result.changePercent, 0.001)
+        every { call.execute() } returns response
+        return call
     }
 
     @Test
-    fun `returns null on network failure`() = runTest {
-        val mockCall = mockk<Call>()
-        every { mockClient.newCall(any()) } returns mockCall
-        every { mockCall.execute() } throws RuntimeException("timeout")
+    fun `getMarketData returns data for all tickers`() = runTest {
+        val json = """{"chart":{"result":[{"meta":{"regularMarketPrice":5000.0,"chartPreviousClose":4900.0}}]}}"""
+        // Each of the 4 tickers gets its own call - return valid json for all
+        every { mockClient.newCall(any()) } answers { mockResponse(json) }
 
-        val result = repo.getSandP500()
+        val result = repo.getMarketData()
 
-        assertNull(result)
+        assertEquals(4, result.size)
+        assertEquals("标普500", result[0].indexName)
+        assertEquals(5000.0, result[0].price, 0.001)
     }
 
     @Test
-    fun `toSpeechZh returns correct string for positive change`() {
-        val data = com.morninggrace.core.model.FinanceData(
-            indexName = "标普500",
-            price = 5000.0,
-            changePercent = 2.04
-        )
-        assertEquals("标普5005000点，上涨2.0%", data.toSpeechZh())
+    fun `getMarketData returns empty list on network failure`() = runTest {
+        val call = mockk<Call>()
+        every { call.execute() } throws RuntimeException("timeout")
+        every { mockClient.newCall(any()) } returns call
+
+        val result = repo.getMarketData()
+
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun `toSpeechZh formats index correctly`() {
+        val data = com.morninggrace.core.model.FinanceData("标普500", 5000.0, 2.04)
+        assertEquals("标普500 5000点，涨2.0%", data.toSpeechZh())
+    }
+
+    @Test
+    fun `toSpeechZh formats bitcoin in wan`() {
+        val data = com.morninggrace.core.model.FinanceData("比特币", 630000.0, -1.5)
+        assertEquals("比特币 63万美元，跌1.5%", data.toSpeechZh())
     }
 }
