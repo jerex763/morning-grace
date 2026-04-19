@@ -63,10 +63,24 @@ class BroadcastOrchestrator @Inject constructor(
         val firstPassage = passages.firstOrNull()
         Log.d(TAG, "prepare() bible passage: $firstPassage")
 
-        // TODO: restore bible DB after TTS confirmed working
-        val bibleZh = "In the beginning, God created the heavens and the earth."
-        val bibleEn = "In the beginning, God created the heavens and the earth."
-        Log.d(TAG, "prepare() using hardcoded bible (TTS test mode)")
+        val bibleZh = if (firstPassage != null) {
+            Log.d(TAG, "prepare() fetching zh verses")
+            bibleRepo.getVersesForPassage(firstPassage, "zh")
+                .joinToString(" ") { it.text }
+                .ifBlank { "今日经文暂不可用" }
+        } else {
+            "今日经文暂不可用"
+        }
+
+        val bibleEn = if (firstPassage != null) {
+            Log.d(TAG, "prepare() fetching en verses")
+            bibleRepo.getVersesForPassage(firstPassage, "en")
+                .joinToString(" ") { it.text }
+                .ifBlank { "Bible reading unavailable" }
+        } else {
+            "Bible reading unavailable"
+        }
+        Log.d(TAG, "prepare() bible done")
 
         val weather = "天气功能暂时无法获取"
         val finance = "财经功能暂时无法获取"
