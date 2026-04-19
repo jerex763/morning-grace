@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.View
 import android.widget.CheckBox
+import android.widget.RadioGroup
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -20,6 +21,7 @@ import com.google.android.gms.location.Priority
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.morninggrace.alarm.AlarmPermissionChecker
+import com.morninggrace.orchestrator.DynamicBibleReadingPlan
 import com.morninggrace.alarm.AlarmScheduler
 import com.morninggrace.alarm.AlarmService
 import com.morninggrace.core.model.AlarmConfig
@@ -100,6 +102,23 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<MaterialButton>(R.id.locationButton).setOnClickListener {
             requestLocationOrFetch()
+        }
+
+        // Reading plan
+        val planGroup = findViewById<RadioGroup>(R.id.planRadioGroup)
+        val savedPlan = prefs.getString(DynamicBibleReadingPlan.KEY, DynamicBibleReadingPlan.ID_MCCHEYNE)
+        planGroup.check(when (savedPlan) {
+            DynamicBibleReadingPlan.ID_SEQUENTIAL    -> R.id.planSequential
+            DynamicBibleReadingPlan.ID_CHAPTER_A_DAY -> R.id.planChapterADay
+            else                                     -> R.id.planMcCheyne
+        })
+        planGroup.setOnCheckedChangeListener { _, checkedId ->
+            val planId = when (checkedId) {
+                R.id.planSequential    -> DynamicBibleReadingPlan.ID_SEQUENTIAL
+                R.id.planChapterADay   -> DynamicBibleReadingPlan.ID_CHAPTER_A_DAY
+                else                   -> DynamicBibleReadingPlan.ID_MCCHEYNE
+            }
+            prefs.edit().putString(DynamicBibleReadingPlan.KEY, planId).apply()
         }
 
         val skipBibleCheckbox = findViewById<CheckBox>(R.id.skipBibleCheckbox)

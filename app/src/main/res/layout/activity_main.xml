@@ -155,6 +155,68 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- ── Reading Plan Card ── -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp"
+            app:cardBackgroundColor="@color/bg_card">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="读经计划"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:layout_marginBottom="12dp" />
+
+                <RadioGroup
+                    android:id="@+id/planRadioGroup"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <RadioButton
+                        android:id="@+id/planMcCheyne"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="麦大卫一年读经"
+                        android:textSize="15sp"
+                        android:textColor="@color/text_label"
+                        android:layout_marginBottom="4dp" />
+
+                    <RadioButton
+                        android:id="@+id/planSequential"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="顺序读经（创世记 → 启示录）"
+                        android:textSize="15sp"
+                        android:textColor="@color/text_label"
+                        android:layout_marginBottom="4dp" />
+
+                    <RadioButton
+                        android:id="@+id/planChapterADay"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="每天一章"
+                        android:textSize="15sp"
+                        android:textColor="@color/text_label" />
+
+                </RadioGroup>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- ── Dev / Test Card ── -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"

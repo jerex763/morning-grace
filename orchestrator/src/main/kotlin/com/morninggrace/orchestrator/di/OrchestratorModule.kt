@@ -1,7 +1,10 @@
 package com.morninggrace.orchestrator.di
 
 import com.morninggrace.bible.plan.BibleReadingPlan
+import com.morninggrace.bible.plan.ChapterADayPlan
 import com.morninggrace.bible.plan.McCheyneOnePlan
+import com.morninggrace.bible.plan.SequentialPlan
+import com.morninggrace.orchestrator.DynamicBibleReadingPlan
 import com.morninggrace.core.repository.FinanceRepository
 import com.morninggrace.core.repository.NewsRepository
 import com.morninggrace.core.repository.WeatherRepository
@@ -22,7 +25,7 @@ import javax.inject.Singleton
 abstract class OrchestratorModule {
 
     @Binds @Singleton
-    abstract fun bindsBibleReadingPlan(impl: McCheyneOnePlan): BibleReadingPlan
+    abstract fun bindsBibleReadingPlan(impl: DynamicBibleReadingPlan): BibleReadingPlan
 
     @Binds @Singleton
     abstract fun bindsWeatherRepository(impl: OpenMeteoWeatherRepository): WeatherRepository
@@ -34,6 +37,9 @@ abstract class OrchestratorModule {
     abstract fun bindsNewsRepository(impl: RssNewsRepository): NewsRepository
 
     companion object {
+        @Provides @Singleton fun providesSequentialPlan()  = SequentialPlan()
+        @Provides @Singleton fun providesChapterADayPlan() = ChapterADayPlan()
+
         @Provides @Singleton
         fun providesOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
