@@ -44,6 +44,8 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
 
     override fun isAvailable(): Boolean = ready
 
+    override fun stop() { tts?.stop() }
+
     override suspend fun speak(text: String, language: Language) {
         val engine = requireNotNull(tts) { "AndroidTtsEngine not attached" }
         require(ready) { "AndroidTtsEngine not ready" }

@@ -8,4 +8,7 @@ interface TtsEngine {
 
     /** Returns true if the engine is initialised and ready. */
     fun isAvailable(): Boolean
+
+    /** Immediately stops any in-progress speech. */
+    fun stop()
 }

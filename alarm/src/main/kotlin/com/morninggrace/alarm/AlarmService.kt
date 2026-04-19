@@ -13,6 +13,7 @@ import com.morninggrace.tts.AndroidTtsEngine
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -32,6 +33,7 @@ class AlarmService : Service() {
     @Inject lateinit var ttsEngine: AndroidTtsEngine
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var broadcastJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -47,7 +49,7 @@ class AlarmService : Service() {
         val skipBible = intent?.getBooleanExtra(EXTRA_SKIP_BIBLE, false) ?: false
         startForeground(NOTIFICATION_ID, buildNotification())
 
-        serviceScope.launch {
+        broadcastJob = serviceScope.launch {
             android.util.Log.d("MorningGrace", "AlarmService: attaching TTS (skipBible=$skipBible)")
             ttsEngine.attach(this@AlarmService)
             android.util.Log.d("MorningGrace", "AlarmService: TTS attached, starting session")
@@ -68,6 +70,8 @@ class AlarmService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun stopSession() {
+        broadcastJob?.cancel()
+        broadcastJob = null
         morningSession.stop()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()

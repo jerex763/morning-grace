@@ -56,6 +56,7 @@ class BroadcastOrchestrator @Inject constructor(
     }
 
     fun stop() {
+        ttsEngine.stop()
         state = BroadcastState.Idle
     }
 
