@@ -28,7 +28,7 @@ data class WeatherData(
         }
         val uv = when {
             uvIndex < 3 -> "低"
-            uvIndex < 6 -> "中"
+            uvIndex < 6 -> "中等"
             uvIndex < 8 -> "高"
             else -> "极高"
         }

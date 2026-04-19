@@ -19,7 +19,8 @@ data class FinanceData(
     private fun formatPct(value: Double): String {
         val i = value.toInt()
         val dec = ((value - i) * 10).toInt()
-        return if (dec == 0) "${toChineseNumber(i)}%" else "${toChineseNumber(i)}点${toChineseNumber(dec)}%"
+        return if (dec == 0) "${toChineseNumber(i)}个百分点"
+        else "${toChineseNumber(i)}点${toChineseNumber(dec)}个百分点"
     }
 }
 

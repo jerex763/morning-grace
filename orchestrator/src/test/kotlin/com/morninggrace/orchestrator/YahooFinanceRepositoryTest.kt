@@ -58,12 +58,12 @@ class YahooFinanceRepositoryTest {
     @Test
     fun `toSpeechZh formats index as chinese numbers`() {
         val data = com.morninggrace.core.model.FinanceData("标普五百", 5234.0, 2.0)
-        assertEquals("标普五百 五千两百三十四点，涨两%", data.toSpeechZh())
+        assertEquals("标普五百 五千两百三十四点，涨两个百分点", data.toSpeechZh())
     }
 
     @Test
     fun `toSpeechZh formats bitcoin in wan as chinese`() {
         val data = com.morninggrace.core.model.FinanceData("比特币", 630000.0, -1.5)
-        assertEquals("比特币 六十三万美元，跌一点五%", data.toSpeechZh())
+        assertEquals("比特币 六十三万美元，跌一点五个百分点", data.toSpeechZh())
     }
 }

@@ -58,7 +58,7 @@ class OpenMeteoWeatherRepositoryTest {
             windSpeedKmh = 15.0,
             uvIndex = 4.0
         )
-        assertEquals("今天晴天，25度，湿度70%，轻风，紫外线中", data.toSpeechZh())
+        assertEquals("今天晴天，25度，湿度70%，轻风，紫外线中等", data.toSpeechZh())
     }
 
     @Test

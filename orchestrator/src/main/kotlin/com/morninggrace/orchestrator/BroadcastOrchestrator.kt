@@ -107,6 +107,7 @@ class BroadcastOrchestrator @Inject constructor(
         safeSpeak("今日读经：", Language.ZH)
         safeSpeak(content.bibleZh, Language.ZH)
         safeSpeak(content.bibleEn, Language.EN)
+        safeSpeak("今日读经结束，接下来是财经播报。", Language.ZH)
         safeSpeak("今日市场行情：", Language.ZH)
         safeSpeak(content.marketSummary, Language.ZH)
         safeSpeak("今日财经头条：", Language.ZH)
