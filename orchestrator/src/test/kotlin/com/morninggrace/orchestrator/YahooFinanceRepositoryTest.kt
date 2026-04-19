@@ -40,7 +40,7 @@ class YahooFinanceRepositoryTest {
         val result = repo.getMarketData()
 
         assertEquals(4, result.size)
-        assertEquals("标普500", result[0].indexName)
+        assertEquals("标普五百", result[0].indexName)
         assertEquals(5000.0, result[0].price, 0.001)
     }
 
@@ -56,14 +56,14 @@ class YahooFinanceRepositoryTest {
     }
 
     @Test
-    fun `toSpeechZh formats index correctly`() {
-        val data = com.morninggrace.core.model.FinanceData("标普500", 5000.0, 2.04)
-        assertEquals("标普500 5000点，涨2.0%", data.toSpeechZh())
+    fun `toSpeechZh formats index as chinese numbers`() {
+        val data = com.morninggrace.core.model.FinanceData("标普五百", 5234.0, 2.0)
+        assertEquals("标普五百 五千两百三十四点，涨两%", data.toSpeechZh())
     }
 
     @Test
-    fun `toSpeechZh formats bitcoin in wan`() {
+    fun `toSpeechZh formats bitcoin in wan as chinese`() {
         val data = com.morninggrace.core.model.FinanceData("比特币", 630000.0, -1.5)
-        assertEquals("比特币 63万美元，跌1.5%", data.toSpeechZh())
+        assertEquals("比特币 六十三万美元，跌一点五%", data.toSpeechZh())
     }
 }

@@ -15,7 +15,7 @@ class YahooFinanceRepository @Inject constructor(
 ) : FinanceRepository {
 
     private val tickers = listOf(
-        "^GSPC"     to "标普500",
+        "^GSPC"     to "标普五百",
         "^IXIC"     to "纳斯达克",
         "000001.SS" to "上证",
         "BTC-USD"   to "比特币"
