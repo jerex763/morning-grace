@@ -20,7 +20,7 @@ data class FinanceData(
         val i = value.toInt()
         val dec = ((value - i) * 10).toInt()
         return if (dec == 0) "${toChineseNumber(i)}个百分点"
-        else "${toChineseNumber(i)}点${toChineseNumber(dec)}个百分点"
+        else "${toChineseNumber(i)}点${DIGITS[dec]}个百分点"
     }
 }
 
