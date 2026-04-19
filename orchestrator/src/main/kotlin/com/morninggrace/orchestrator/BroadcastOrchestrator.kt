@@ -126,7 +126,6 @@ class BroadcastOrchestrator @Inject constructor(
         }
 
         if (!actuallySkipBible && content.bibleZh.isNotBlank()) {
-            safeSpeak("今日读经：", Language.ZH)
             safeSpeak(content.bibleZh, Language.ZH)
             safeSpeak(content.bibleEn, Language.EN)
             safeSpeak("今日读经结束，接下来是财经播报。", Language.ZH)
