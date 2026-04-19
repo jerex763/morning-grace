@@ -1,21 +1,62 @@
-# Morning Grace （晨光）
+# 晨光 Morning Grace
 
-晨间 AI 助理 Android App. Alarm + weather + Bible reading + AI conversation.
+> 每天早晨的例行播报——天气、读经、财经，全程语音，无需动手。
 
-## Modules
-- `core` — shared models and utilities
-- `alarm` — alarm scheduling and foreground service
-- `orchestrator` — morning session flow state machine
-- `bible` — Bible text and reading plans (Plan 2)
-- `weather` — weather data (Plan 4)
-- `finance` — financial news (Plan 4)
-- `tts` — text-to-speech abstraction (Plan 3)
-- `voice` — speech recognition (Plan 5)
-- `ai` — AI client abstraction (Plan 5)
+一款为海外华人打造的 Android 晨间助理。闹钟触发后自动播报当天天气、圣经经文（中英双语）、股市行情与新闻头条，支持语音确认和停止。
 
-## Build
+---
+
+## 功能
+
+| 功能 | 说明 |
+|------|------|
+| ⏰ 定时闹钟 | 每日定时触发，精确闹钟，重启后自动恢复 |
+| 🌤 天气播报 | 温度、天气状况、湿度、风速、紫外线指数 |
+| 📖 圣经读经 | 中文和合本 + 英文 KJV，三种读经计划可选 |
+| 🎙 语音确认 | 播报前说「跳过」可跳过今日读经 |
+| 📈 财经播报 | 标普500、纳斯达克、上证指数、比特币 |
+| 📰 新闻头条 | BBC 中文 RSS，每日三条 |
+| 📍 GPS 定位 | 自动获取当前位置用于天气查询 |
+
+## 读经计划
+
+- **麦大卫一年读经** — 每天4段，旧约+新约交叉阅读
+- **顺序读经** — 每天1章，创世记 → 启示录
+
+## 数据来源
+
+| 数据 | 来源 | 费用 |
+|------|------|------|
+| 天气 | [Open-Meteo](https://open-meteo.com) | 免费，无需 API key |
+| 股市 | Yahoo Finance API | 免费 |
+| 新闻 | BBC 中文 RSS | 免费 |
+| 圣经 | 和合本（公版）+ KJV（公版） | 免费 |
+
+## 技术栈
+
+- **语言**：Kotlin
+- **架构**：多模块，Hilt 依赖注入，Coroutines
+- **数据库**：Room（圣经 62,000 节经文）
+- **网络**：OkHttp
+- **UI**：Material Design 3
+
+## 模块结构
+
+```
+morning-grace/
+├── app/          # UI、设置页、Hilt 入口
+├── core/         # 共享数据模型与接口
+├── alarm/        # 闹钟调度、BroadcastReceiver、前台 Service
+├── orchestrator/ # 播报流程状态机（核心业务逻辑）
+├── bible/        # 圣经文本数据库与读经计划
+└── tts/          # TTS 与语音识别抽象层
+```
+
+## 构建
 
 ```bash
-./gradlew assembleDebug
-./gradlew test
+./gradlew assembleDebug   # 构建 APK
+./gradlew test            # 运行单元测试
 ```
+
+最低支持 Android 8.0（API 26）。
