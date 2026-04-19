@@ -5,6 +5,7 @@ import com.morninggrace.bible.model.BibleVerse
 import com.morninggrace.bible.plan.McCheyneOnePlan
 import com.morninggrace.core.model.LocationPrefs
 import com.morninggrace.core.repository.FinanceRepository
+import com.morninggrace.core.repository.LocationRepository
 import com.morninggrace.core.repository.NewsRepository
 import com.morninggrace.core.repository.WeatherRepository
 import com.morninggrace.tts.TtsEngine
@@ -31,10 +32,12 @@ class BroadcastOrchestratorTest {
     private val newsRepo = mockk<NewsRepository> {
         coEvery { getTopHeadlines(any()) } returns emptyList()
     }
-    private val locationPrefs = LocationPrefs(lat = -33.87, lon = 151.21)
+    private val locationRepo = mockk<LocationRepository> {
+        every { get() } returns LocationPrefs(lat = -33.87, lon = 151.21)
+    }
 
     private val orchestrator = BroadcastOrchestrator(
-        ttsEngine, bibleRepo, plan, weatherRepo, financeRepo, newsRepo, locationPrefs
+        ttsEngine, bibleRepo, plan, weatherRepo, financeRepo, newsRepo, locationRepo
     )
 
     @Test

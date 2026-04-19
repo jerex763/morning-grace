@@ -4,8 +4,8 @@ import android.util.Log
 import com.morninggrace.bible.BibleRepository
 import com.morninggrace.bible.plan.BibleReadingPlan
 import com.morninggrace.core.model.Language
-import com.morninggrace.core.model.LocationPrefs
 import com.morninggrace.core.repository.FinanceRepository
+import com.morninggrace.core.repository.LocationRepository
 import com.morninggrace.core.repository.NewsRepository
 import com.morninggrace.core.repository.WeatherRepository
 import com.morninggrace.tts.TtsEngine
@@ -25,7 +25,7 @@ class BroadcastOrchestrator @Inject constructor(
     private val weatherRepo: WeatherRepository,
     private val financeRepo: FinanceRepository,
     private val newsRepo: NewsRepository,
-    private val locationPrefs: LocationPrefs
+    private val locationRepo: LocationRepository
 ) {
 
     var state: BroadcastState = BroadcastState.Idle
@@ -55,7 +55,8 @@ class BroadcastOrchestrator @Inject constructor(
     }
 
     private suspend fun prepare(date: LocalDate, skipBible: Boolean): BroadcastContent = coroutineScope {
-        val weatherJob = async { weatherRepo.getCurrentWeather(locationPrefs.lat, locationPrefs.lon) }
+        val location = locationRepo.get()
+        val weatherJob = async { weatherRepo.getCurrentWeather(location.lat, location.lon) }
         val financeJob = async { financeRepo.getMarketData() }
         val newsJob    = async { newsRepo.getTopHeadlines(3) }
 
