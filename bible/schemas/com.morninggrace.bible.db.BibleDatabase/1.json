@@ -1,0 +1,73 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "9e9c734bb7d3658dadd56ec8556c8df1",
+    "entities": [
+      {
+        "tableName": "bible_verses",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`book` INTEGER NOT NULL, `chapter` INTEGER NOT NULL, `verse` INTEGER NOT NULL, `lang` TEXT NOT NULL, `text` TEXT NOT NULL, PRIMARY KEY(`book`, `chapter`, `verse`, `lang`))",
+        "fields": [
+          {
+            "fieldPath": "book",
+            "columnName": "book",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chapter",
+            "columnName": "chapter",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "verse",
+            "columnName": "verse",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lang",
+            "columnName": "lang",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "text",
+            "columnName": "text",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "book",
+            "chapter",
+            "verse",
+            "lang"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_bible_verses_book_chapter_lang",
+            "unique": false,
+            "columnNames": [
+              "book",
+              "chapter",
+              "lang"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_bible_verses_book_chapter_lang` ON `${TABLE_NAME}` (`book`, `chapter`, `lang`)"
+          }
+        ],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9e9c734bb7d3658dadd56ec8556c8df1')"
+    ]
+  }
+}

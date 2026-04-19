@@ -17,7 +17,7 @@ object BibleModule {
     @Provides
     @Singleton
     fun providesBibleDatabase(@ApplicationContext context: Context): BibleDatabase =
-        BibleDatabase.createWithCallback(context)
+        BibleDatabase.create(context)
 
     @Provides
     fun providesBibleVerseDao(db: BibleDatabase): BibleVerseDao = db.verseDao()
