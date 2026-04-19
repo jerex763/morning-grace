@@ -10,6 +10,7 @@ import android.util.Log
 import com.morninggrace.core.model.ConfirmationResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -32,6 +33,7 @@ class AndroidSpeechEngine @Inject constructor(
             return ConfirmationResult.Confirmed
         }
         return withContext(Dispatchers.Main) {
+            delay(500) // let the audio subsystem settle after TTS
             val timed: ConfirmationResult? = withTimeoutOrNull(timeoutMs) {
                 suspendCancellableCoroutine { cont ->
                     val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
@@ -63,6 +65,7 @@ class AndroidSpeechEngine @Inject constructor(
                         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                         putExtra(RecognizerIntent.EXTRA_LANGUAGE, "zh-CN")
                         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
+                        putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
                         putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 3_000L)
                         putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2_000L)
                     }
