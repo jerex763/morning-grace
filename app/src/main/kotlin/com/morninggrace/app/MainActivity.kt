@@ -41,6 +41,10 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestPermission()
     ) { /* silent */ }
 
+    private val recordAudioPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* silent — SpeechEngine falls back gracefully if denied */ }
+
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -53,6 +57,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         prefs = getSharedPreferences("alarm_prefs", MODE_PRIVATE)
         requestNotificationPermissionIfNeeded()
+        requestRecordAudioPermissionIfNeeded()
 
         val timePicker = findViewById<TimePicker>(R.id.timePicker)
         val alarmSwitch = findViewById<Switch>(R.id.alarmSwitch)
@@ -152,6 +157,14 @@ class MainActivity : AppCompatActivity() {
             locationStatus.text = "📍 %.4f, %.4f".format(loc.lat, loc.lon)
         } else {
             locationStatus.text = "位置未设置（使用默认：Sydney）"
+        }
+    }
+
+    private fun requestRecordAudioPermissionIfNeeded() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
 

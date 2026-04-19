@@ -44,19 +44,8 @@ class BroadcastOrchestrator @Inject constructor(
             val content = prepare(date, skipBible)
             state = BroadcastState.Broadcasting(content)
 
-            val skipBibleFinal = when {
-                skipBible -> true
-                content.passageName.isBlank() -> false
-                else -> {
-                    safeSpeak("今天读经是${content.passageName}，请确认或跳过", Language.ZH)
-                    val result = speechEngine.listenForConfirmation(8_000L)
-                    Log.d(TAG, "Voice confirmation: $result")
-                    result == ConfirmationResult.Skipped
-                }
-            }
-
-            Log.d(TAG, "deliver() starting, skipBible=$skipBibleFinal")
-            deliver(content, skipBibleFinal)
+            Log.d(TAG, "deliver() starting")
+            deliver(content, skipBible)
             Log.d(TAG, "deliver() done")
         } catch (e: Exception) {
             Log.e(TAG, "broadcast() failed", e)
@@ -124,7 +113,19 @@ class BroadcastOrchestrator @Inject constructor(
     private suspend fun deliver(content: BroadcastContent, skipBible: Boolean = false) {
         safeSpeak(content.greeting, Language.ZH)
         safeSpeak(content.weather, Language.ZH)
-        if (!skipBible && content.bibleZh.isNotBlank()) {
+
+        val actuallySkipBible = when {
+            skipBible -> true
+            content.passageName.isBlank() -> false
+            else -> {
+                safeSpeak("今天读经是${content.passageName}，请确认或跳过", Language.ZH)
+                val result = speechEngine.listenForConfirmation(8_000L)
+                Log.d(TAG, "Voice confirmation: $result")
+                result == ConfirmationResult.Skipped
+            }
+        }
+
+        if (!actuallySkipBible && content.bibleZh.isNotBlank()) {
             safeSpeak("今日读经：", Language.ZH)
             safeSpeak(content.bibleZh, Language.ZH)
             safeSpeak(content.bibleEn, Language.EN)
