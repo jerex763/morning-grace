@@ -2,7 +2,10 @@ package com.morninggrace.core.model
 
 data class WeatherData(
     val temperatureCelsius: Double,
-    val weatherCode: Int
+    val weatherCode: Int,
+    val humidity: Int,
+    val windSpeedKmh: Double,
+    val uvIndex: Double
 ) {
     fun toSpeechZh(): String {
         val desc = when (weatherCode) {
@@ -17,7 +20,18 @@ data class WeatherData(
             95 -> "雷阵雨"
             else -> "天气不明"
         }
-        val temp = temperatureCelsius.toInt()
-        return "今天天气${desc}，${temp}摄氏度"
+        val wind = when {
+            windSpeedKmh < 10 -> "微风"
+            windSpeedKmh < 30 -> "轻风"
+            windSpeedKmh < 50 -> "中风"
+            else -> "大风"
+        }
+        val uv = when {
+            uvIndex < 3 -> "低"
+            uvIndex < 6 -> "中"
+            uvIndex < 8 -> "高"
+            else -> "极高"
+        }
+        return "今天${desc}，${temperatureCelsius.toInt()}度，湿度${humidity}%，${wind}，紫外线${uv}"
     }
 }
