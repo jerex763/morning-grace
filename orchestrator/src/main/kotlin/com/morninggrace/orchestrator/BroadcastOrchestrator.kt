@@ -54,9 +54,9 @@ class BroadcastOrchestrator @Inject constructor(
     }
 
     private suspend fun prepare(date: LocalDate): BroadcastContent = coroutineScope {
-        Log.d(TAG, "prepare() launching weather + finance jobs")
-        val weatherJob = async { weatherRepo.getCurrentWeather(locationPrefs.lat, locationPrefs.lon) }
-        val financeJob = async { financeRepo.getSandP500() }
+        // TODO: re-enable after TTS confirmed working
+        // val weatherJob = async { weatherRepo.getCurrentWeather(locationPrefs.lat, locationPrefs.lon) }
+        // val financeJob = async { financeRepo.getSandP500() }
 
         Log.d(TAG, "prepare() loading bible plan for $date")
         val passages = readingPlan.getReadingForDate(date)
@@ -83,10 +83,8 @@ class BroadcastOrchestrator @Inject constructor(
         }
         Log.d(TAG, "prepare() en done, awaiting weather")
 
-        val weather = weatherJob.await()?.toSpeechZh() ?: "天气功能暂时无法获取"
-        Log.d(TAG, "prepare() weather=$weather")
-        val finance = financeJob.await()?.toSpeechZh() ?: "财经功能暂时无法获取"
-        Log.d(TAG, "prepare() finance=$finance")
+        val weather = "天气功能暂时无法获取"
+        val finance = "财经功能暂时无法获取"
 
         BroadcastContent(
             greeting = "早安，晨光播报开始。",
