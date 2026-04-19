@@ -54,34 +54,46 @@ class BroadcastOrchestrator @Inject constructor(
     }
 
     private suspend fun prepare(date: LocalDate): BroadcastContent = coroutineScope {
+        Log.d(TAG, "prepare() launching weather + finance jobs")
         val weatherJob = async { weatherRepo.getCurrentWeather(locationPrefs.lat, locationPrefs.lon) }
         val financeJob = async { financeRepo.getSandP500() }
 
+        Log.d(TAG, "prepare() loading bible plan for $date")
         val passages = readingPlan.getReadingForDate(date)
         val firstPassage = passages.firstOrNull()
+        Log.d(TAG, "prepare() bible passage: $firstPassage")
 
         val bibleZh = if (firstPassage != null) {
+            Log.d(TAG, "prepare() fetching zh verses")
             bibleRepo.getVersesForPassage(firstPassage, "zh")
                 .joinToString(" ") { it.text }
                 .ifBlank { "今日经文暂不可用" }
         } else {
             "今日经文暂不可用"
         }
+        Log.d(TAG, "prepare() zh done, awaiting weather + finance")
 
         val bibleEn = if (firstPassage != null) {
+            Log.d(TAG, "prepare() fetching en verses")
             bibleRepo.getVersesForPassage(firstPassage, "en")
                 .joinToString(" ") { it.text }
                 .ifBlank { "Bible reading unavailable" }
         } else {
             "Bible reading unavailable"
         }
+        Log.d(TAG, "prepare() en done, awaiting weather")
+
+        val weather = weatherJob.await()?.toSpeechZh() ?: "天气功能暂时无法获取"
+        Log.d(TAG, "prepare() weather=$weather")
+        val finance = financeJob.await()?.toSpeechZh() ?: "财经功能暂时无法获取"
+        Log.d(TAG, "prepare() finance=$finance")
 
         BroadcastContent(
             greeting = "早安，晨光播报开始。",
             bibleZh = bibleZh,
             bibleEn = bibleEn,
-            weather = weatherJob.await()?.toSpeechZh() ?: "天气功能暂时无法获取",
-            finance = financeJob.await()?.toSpeechZh() ?: "财经功能暂时无法获取"
+            weather = weather,
+            finance = finance
         )
     }
 

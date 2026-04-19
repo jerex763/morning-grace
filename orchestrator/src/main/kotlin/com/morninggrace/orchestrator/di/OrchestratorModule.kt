@@ -12,6 +12,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
@@ -29,6 +30,9 @@ abstract class OrchestratorModule {
 
     companion object {
         @Provides @Singleton
-        fun providesOkHttpClient(): OkHttpClient = OkHttpClient()
+        fun providesOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
+                .connectTimeout(15, TimeUnit.SECONDS)
+                .readTimeout(15, TimeUnit.SECONDS)
+                .build()
     }
 }
