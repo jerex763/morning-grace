@@ -3,11 +3,14 @@ package com.morninggrace.orchestrator
 import android.util.Log
 import com.morninggrace.bible.BibleRepository
 import com.morninggrace.bible.plan.BibleReadingPlan
+import com.morninggrace.bible.toChineseTitle
+import com.morninggrace.core.model.ConfirmationResult
 import com.morninggrace.core.model.Language
 import com.morninggrace.core.repository.FinanceRepository
 import com.morninggrace.core.repository.LocationRepository
 import com.morninggrace.core.repository.NewsRepository
 import com.morninggrace.core.repository.WeatherRepository
+import com.morninggrace.tts.SpeechEngine
 import com.morninggrace.tts.TtsEngine
 import java.time.LocalDate
 import javax.inject.Inject
@@ -25,7 +28,8 @@ class BroadcastOrchestrator @Inject constructor(
     private val weatherRepo: WeatherRepository,
     private val financeRepo: FinanceRepository,
     private val newsRepo: NewsRepository,
-    private val locationRepo: LocationRepository
+    private val locationRepo: LocationRepository,
+    private val speechEngine: SpeechEngine
 ) {
 
     var state: BroadcastState = BroadcastState.Idle
@@ -39,8 +43,20 @@ class BroadcastOrchestrator @Inject constructor(
         try {
             val content = prepare(date, skipBible)
             state = BroadcastState.Broadcasting(content)
-            Log.d(TAG, "deliver() starting")
-            deliver(content)
+
+            val skipBibleFinal = when {
+                skipBible -> true
+                content.passageName.isBlank() -> false
+                else -> {
+                    safeSpeak("今天读经是${content.passageName}，请确认或跳过", Language.ZH)
+                    val result = speechEngine.listenForConfirmation(8_000L)
+                    Log.d(TAG, "Voice confirmation: $result")
+                    result == ConfirmationResult.Skipped
+                }
+            }
+
+            Log.d(TAG, "deliver() starting, skipBible=$skipBibleFinal")
+            deliver(content, skipBibleFinal)
             Log.d(TAG, "deliver() done")
         } catch (e: Exception) {
             Log.e(TAG, "broadcast() failed", e)
@@ -63,6 +79,8 @@ class BroadcastOrchestrator @Inject constructor(
         Log.d(TAG, "prepare() loading bible plan for $date")
         val passage = if (!skipBible) readingPlan.getReadingForDate(date).firstOrNull() else null
         Log.d(TAG, "prepare() bible passage: $passage (skipBible=$skipBible)")
+
+        val passageName = passage?.toChineseTitle() ?: ""
 
         val bibleZh = if (passage != null) {
             bibleRepo.getVersesForPassage(passage, "zh")
@@ -94,6 +112,7 @@ class BroadcastOrchestrator @Inject constructor(
 
         BroadcastContent(
             greeting = "早安，晨光播报开始。",
+            passageName = passageName,
             weather = weather,
             bibleZh = bibleZh,
             bibleEn = bibleEn,
@@ -102,13 +121,15 @@ class BroadcastOrchestrator @Inject constructor(
         )
     }
 
-    private suspend fun deliver(content: BroadcastContent) {
+    private suspend fun deliver(content: BroadcastContent, skipBible: Boolean = false) {
         safeSpeak(content.greeting, Language.ZH)
         safeSpeak(content.weather, Language.ZH)
-        safeSpeak("今日读经：", Language.ZH)
-        safeSpeak(content.bibleZh, Language.ZH)
-        safeSpeak(content.bibleEn, Language.EN)
-        safeSpeak("今日读经结束，接下来是财经播报。", Language.ZH)
+        if (!skipBible && content.bibleZh.isNotBlank()) {
+            safeSpeak("今日读经：", Language.ZH)
+            safeSpeak(content.bibleZh, Language.ZH)
+            safeSpeak(content.bibleEn, Language.EN)
+            safeSpeak("今日读经结束，接下来是财经播报。", Language.ZH)
+        }
         safeSpeak("今日市场行情：", Language.ZH)
         safeSpeak(content.marketSummary, Language.ZH)
         safeSpeak("今日财经头条：", Language.ZH)

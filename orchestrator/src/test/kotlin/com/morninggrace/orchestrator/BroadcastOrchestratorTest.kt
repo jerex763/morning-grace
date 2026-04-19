@@ -8,6 +8,8 @@ import com.morninggrace.core.repository.FinanceRepository
 import com.morninggrace.core.repository.LocationRepository
 import com.morninggrace.core.repository.NewsRepository
 import com.morninggrace.core.repository.WeatherRepository
+import com.morninggrace.core.model.ConfirmationResult
+import com.morninggrace.tts.SpeechEngine
 import com.morninggrace.tts.TtsEngine
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -35,9 +37,13 @@ class BroadcastOrchestratorTest {
     private val locationRepo = mockk<LocationRepository> {
         every { get() } returns LocationPrefs(lat = -33.87, lon = 151.21)
     }
+    private val speechEngine = mockk<SpeechEngine> {
+        coEvery { listenForConfirmation(any()) } returns ConfirmationResult.Confirmed
+        every { isAvailable() } returns true
+    }
 
     private val orchestrator = BroadcastOrchestrator(
-        ttsEngine, bibleRepo, plan, weatherRepo, financeRepo, newsRepo, locationRepo
+        ttsEngine, bibleRepo, plan, weatherRepo, financeRepo, newsRepo, locationRepo, speechEngine
     )
 
     @Test
