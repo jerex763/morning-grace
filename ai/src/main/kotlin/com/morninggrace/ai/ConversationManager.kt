@@ -40,13 +40,20 @@ class ConversationManager @Inject constructor(
             val input = speechEngine.listenForText(LISTEN_TIMEOUT_MS)
             if (input.isNullOrBlank()) {
                 Log.d(TAG, "No speech input — ending conversation")
+                safeSpeak("没有收到语音，对话结束。愿你今天蒙福。")
                 break
             }
             Log.d(TAG, "User said: $input")
 
-            if (DISMISS_WORDS.any { input.contains(it, ignoreCase = true) }) {
-                safeSpeak("再见，愿你今天平安喜乐。")
-                break
+            when {
+                DISMISS_WORDS.any { input.contains(it, ignoreCase = true) } -> {
+                    safeSpeak("再见，愿你今天平安喜乐。")
+                    break
+                }
+                REPLAY_WORDS.any { input.contains(it) } -> {
+                    safeSpeak("重播请重新触发闹钟。对话结束。")
+                    break
+                }
             }
 
             val window = if (history.size > WINDOW_SIZE) history.takeLast(WINDOW_SIZE) else history
@@ -63,7 +70,7 @@ class ConversationManager @Inject constructor(
             safeSpeak(response)
         }
 
-        if (turns >= MAX_TURNS) safeSpeak("已达对话上限，再见。")
+        if (turns >= MAX_TURNS) safeSpeak("已达对话上限，再见。愿你今天蒙福。")
         Log.d(TAG, "Conversation ended after $turns turns")
     }
 
@@ -74,5 +81,6 @@ class ConversationManager @Inject constructor(
 
     companion object {
         private val DISMISS_WORDS = listOf("关闭", "停止", "结束", "再见", "dismiss")
+        private val REPLAY_WORDS  = listOf("重播", "再播", "再读一遍", "重新播报")
     }
 }

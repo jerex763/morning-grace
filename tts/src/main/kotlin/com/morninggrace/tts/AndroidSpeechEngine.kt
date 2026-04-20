@@ -2,6 +2,8 @@ package com.morninggrace.tts
 
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -87,7 +89,8 @@ class AndroidSpeechEngine @Inject constructor(
             return null
         }
         return withContext(Dispatchers.Main) {
-            delay(500)
+            delay(200) // let TTS audio drain
+            playListenBeep()
             withTimeoutOrNull(timeoutMs) {
                 suspendCancellableCoroutine { cont ->
                     val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
@@ -120,6 +123,8 @@ class AndroidSpeechEngine @Inject constructor(
                         putExtra(RecognizerIntent.EXTRA_LANGUAGE, "zh-CN")
                         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
                         putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, false)
+                        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2_000L)
+                        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1_500L)
                     }
                     recognizer.startListening(intent)
 
@@ -130,6 +135,14 @@ class AndroidSpeechEngine @Inject constructor(
                 }
             }
         }
+    }
+
+    /** Plays a short two-tone beep to signal the mic is open. */
+    private suspend fun playListenBeep() {
+        val toneGen = ToneGenerator(AudioManager.STREAM_MUSIC, 70)
+        toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 180)
+        delay(220) // wait for tone to finish before mic opens
+        toneGen.release()
     }
 
     private fun classify(matches: List<String>?): ConfirmationResult {
