@@ -15,8 +15,10 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.widget.AdapterView
 import android.widget.CheckBox
 import android.widget.RadioGroup
+import android.widget.Spinner
 import android.widget.TextView
 import com.google.android.material.textfield.TextInputEditText
 import com.morninggrace.ai.GeminiClient
@@ -33,9 +35,13 @@ import com.morninggrace.alarm.AlarmScheduler
 import com.morninggrace.alarm.AlarmService
 import com.morninggrace.core.model.AlarmConfig
 import com.morninggrace.core.repository.LocationRepository
+import com.morninggrace.bible.plan.SequentialPlan
 import com.morninggrace.orchestrator.DynamicBibleReadingPlan
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+
+private const val KEY_CHAPTER_START_BOOK    = "chapter_start_book"
+private const val KEY_CHAPTER_START_CHAPTER = "chapter_start_chapter"
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
@@ -127,11 +133,23 @@ class MainActivity : AppCompatActivity() {
         // Bible checkbox + reading plan (plan visible only when Bible is enabled)
         val moduleBible = findViewById<CheckBox>(R.id.moduleBible)
         val planGroup   = findViewById<RadioGroup>(R.id.planRadioGroup)
+        val chapterStartRow = findViewById<View>(R.id.chapterStartRow)
+        val bookSpinner    = findViewById<Spinner>(R.id.bookSpinner)
+        val chapterSpinner = findViewById<Spinner>(R.id.chapterSpinner)
+
+        // The start-chapter row is only relevant for the progress-based "每天一章" plan.
+        fun updateChapterRow() {
+            chapterStartRow.visibility =
+                if (moduleBible.isChecked && planGroup.checkedRadioButtonId == R.id.planChapterADay)
+                    View.VISIBLE else View.GONE
+        }
+
         moduleBible.isChecked = prefs.getBoolean(AlarmService.KEY_MODULE_BIBLE, true)
         planGroup.visibility  = if (moduleBible.isChecked) View.VISIBLE else View.GONE
         moduleBible.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean(AlarmService.KEY_MODULE_BIBLE, checked).apply()
             planGroup.visibility = if (checked) View.VISIBLE else View.GONE
+            updateChapterRow()
         }
         val savedPlan = prefs.getString(DynamicBibleReadingPlan.KEY, DynamicBibleReadingPlan.ID_MCCHEYNE)
         planGroup.check(when (savedPlan) {
@@ -146,7 +164,11 @@ class MainActivity : AppCompatActivity() {
                 else                   -> DynamicBibleReadingPlan.ID_MCCHEYNE
             }
             prefs.edit().putString(DynamicBibleReadingPlan.KEY, planId).apply()
+            updateChapterRow()
         }
+
+        setupChapterStartPickers(bookSpinner, chapterSpinner)
+        updateChapterRow()
 
         // AI: Gemini API key
         val aiPrefs = getSharedPreferences("ai_prefs", MODE_PRIVATE)
@@ -199,6 +221,69 @@ class MainActivity : AppCompatActivity() {
         input.clearFocus()
         val imm = getSystemService(android.view.inputmethod.InputMethodManager::class.java)
         imm.hideSoftInputFromWindow(input.windowToken, 0)
+    }
+
+    /**
+     * Wires the book/chapter start pickers for the progress-based reading plan.
+     * Selecting a start point resets progress to that chapter; from then on the
+     * plan advances one chapter each morning the reading is delivered.
+     *
+     * Programmatic [Spinner.setSelection] during setup also fires the selection
+     * listener, so a touch guard ensures we only rewrite progress on real user
+     * interaction — otherwise merely opening this screen would reset progress.
+     */
+    private fun setupChapterStartPickers(bookSpinner: Spinner, chapterSpinner: Spinner) {
+        val bookNames = (1..66).map { com.morninggrace.bible.BookNames.ZH[it] ?: "第${it}卷" }
+        bookSpinner.adapter = android.widget.ArrayAdapter(
+            this, android.R.layout.simple_spinner_dropdown_item, bookNames
+        )
+
+        var userTouched = false
+        val touchGuard = View.OnTouchListener { v, _ -> userTouched = true; v.performClick(); false }
+        bookSpinner.setOnTouchListener(touchGuard)
+        chapterSpinner.setOnTouchListener(touchGuard)
+
+        fun populateChapters(book: Int, selectChapter: Int) {
+            val count = SequentialPlan.chapterCount(book)
+            chapterSpinner.adapter = android.widget.ArrayAdapter(
+                this, android.R.layout.simple_spinner_dropdown_item, (1..count).map { it.toString() }
+            )
+            chapterSpinner.setSelection((selectChapter - 1).coerceIn(0, count - 1))
+        }
+
+        fun saveStart() {
+            if (!userTouched) return
+            val book = bookSpinner.selectedItemPosition + 1
+            val chapter = chapterSpinner.selectedItemPosition + 1
+            prefs.edit()
+                .putInt(KEY_CHAPTER_START_BOOK, book)
+                .putInt(KEY_CHAPTER_START_CHAPTER, chapter)
+                .putInt(DynamicBibleReadingPlan.KEY_CHAPTER_INDEX, SequentialPlan.indexOf(book, chapter))
+                .apply()
+        }
+
+        val startBook = prefs.getInt(KEY_CHAPTER_START_BOOK, 1).coerceIn(1, 66)
+        val startChapter = prefs.getInt(KEY_CHAPTER_START_CHAPTER, 1)
+        bookSpinner.setSelection(startBook - 1)
+        populateChapters(startBook, startChapter)
+
+        bookSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                // Ignore the initial programmatic selection; only react to real changes,
+                // otherwise the saved start chapter would be reset to 1 on every open.
+                if (!userTouched) return
+                // Book changed → chapter list changes; default to chapter 1.
+                populateChapters(position + 1, 1)
+                saveStart()
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+        chapterSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                saveStart()
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
     }
 
     private fun bindModuleCheckbox(viewId: Int, prefKey: String) {

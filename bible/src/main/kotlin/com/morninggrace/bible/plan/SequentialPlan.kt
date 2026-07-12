@@ -26,7 +26,7 @@ class SequentialPlan(
 
     companion object {
         // Protestant 66-book canon chapter counts (OT 39 books, NT 27 books)
-        private val BOOK_CHAPTER_COUNTS = listOf(
+        val BOOK_CHAPTER_COUNTS = listOf(
             // OT (books 1–39)
             50, 40, 27, 36, 34, 24, 21, 4, 31, 24,
             22, 25, 29, 36, 10, 13, 10, 42, 150, 31,
@@ -44,5 +44,13 @@ class SequentialPlan(
                 for (ch in 1..chapters) add(BiblePassage(book, ch, 1, -1))
             }
         }
+
+        /** Number of chapters in a 1-based book number (1 = Genesis … 66 = Revelation). */
+        fun chapterCount(book: Int): Int = BOOK_CHAPTER_COUNTS.getOrElse(book - 1) { 1 }
+
+        /** Absolute index into [ALL_CHAPTERS] for a book/chapter, or 0 if not found. */
+        fun indexOf(book: Int, chapter: Int): Int =
+            ALL_CHAPTERS.indexOfFirst { it.book == book && it.chapter == chapter }
+                .takeIf { it >= 0 } ?: 0
     }
 }

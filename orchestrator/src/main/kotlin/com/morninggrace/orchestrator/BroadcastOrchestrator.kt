@@ -147,6 +147,9 @@ class BroadcastOrchestrator @Inject constructor(
         if (!actuallySkipBible && content.bibleZh.isNotBlank()) {
             safeSpeak(content.bibleZh, Language.ZH)
             safeSpeak(content.bibleEn, Language.EN)
+            // Reading delivered in full — advance progress-based plans to the next
+            // chapter. (Reached only if TTS wasn't cancelled mid-reading.)
+            readingPlan.advanceProgress()
             if (!config.skipFinance || !config.skipNews) {
                 safeSpeak("今日读经结束。", Language.ZH)
             }

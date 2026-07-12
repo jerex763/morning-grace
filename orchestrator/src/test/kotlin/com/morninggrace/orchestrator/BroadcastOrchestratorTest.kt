@@ -2,7 +2,9 @@ package com.morninggrace.orchestrator
 
 import com.morninggrace.ai.ConversationManager
 import com.morninggrace.bible.BibleRepository
+import com.morninggrace.bible.model.BiblePassage
 import com.morninggrace.bible.model.BibleVerse
+import com.morninggrace.bible.plan.BibleReadingPlan
 import com.morninggrace.bible.plan.McCheyneOnePlan
 import com.morninggrace.core.model.LocationPrefs
 import com.morninggrace.core.repository.FinanceRepository
@@ -17,6 +19,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -135,6 +138,54 @@ class BroadcastOrchestratorTest {
         // 4 passages × 2 languages
         coVerify(exactly = 4) { bibleRepo.getVersesForPassage(any(), "zh") }
         coVerify(exactly = 4) { bibleRepo.getVersesForPassage(any(), "en") }
+    }
+
+    // ── progress advancement ─────────────────────────────────────────────────
+
+    private fun orchestratorWith(plan: BibleReadingPlan) = BroadcastOrchestrator(
+        ttsEngine, bibleRepo, plan, weatherRepo, financeRepo, newsRepo, locationRepo,
+        speechEngine, conversationManager
+    )
+
+    @Test
+    fun `advanceProgress called once after bible is read`() = runTest {
+        val mockPlan = mockk<BibleReadingPlan>(relaxed = true) {
+            every { getReadingForDate(any()) } returns listOf(BiblePassage(1, 1, 1, -1))
+        }
+        coEvery { bibleRepo.getVersesForPassage(any(), any()) } returns listOf(
+            BibleVerse(1, 1, 1, "zh", "起初，神创造天地。")
+        )
+        every { ttsEngine.isAvailable() } returns true
+
+        orchestratorWith(mockPlan).broadcast(LocalDate.of(2026, 1, 1))
+
+        verify(exactly = 1) { mockPlan.advanceProgress() }
+    }
+
+    @Test
+    fun `advanceProgress not called when reading skipped by voice`() = runTest {
+        val mockPlan = mockk<BibleReadingPlan>(relaxed = true) {
+            every { getReadingForDate(any()) } returns listOf(BiblePassage(1, 1, 1, -1))
+        }
+        coEvery { bibleRepo.getVersesForPassage(any(), any()) } returns listOf(
+            BibleVerse(1, 1, 1, "zh", "起初，神创造天地。")
+        )
+        coEvery { speechEngine.listenForConfirmation(any()) } returns ConfirmationResult.Skipped
+        every { ttsEngine.isAvailable() } returns true
+
+        orchestratorWith(mockPlan).broadcast(LocalDate.of(2026, 1, 1))
+
+        verify(exactly = 0) { mockPlan.advanceProgress() }
+    }
+
+    @Test
+    fun `advanceProgress not called when bible module disabled`() = runTest {
+        val mockPlan = mockk<BibleReadingPlan>(relaxed = true)
+        every { ttsEngine.isAvailable() } returns true
+
+        orchestratorWith(mockPlan).broadcast(LocalDate.of(2026, 1, 1), BroadcastConfig(skipBible = true))
+
+        verify(exactly = 0) { mockPlan.advanceProgress() }
     }
 
     // ── weather module ──────────────────────────────────────────────────────

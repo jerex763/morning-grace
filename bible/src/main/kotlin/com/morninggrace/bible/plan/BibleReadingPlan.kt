@@ -9,4 +9,10 @@ interface BibleReadingPlan {
     val nameEn: String
     fun getReadingForDate(date: LocalDate): List<BiblePassage>
     fun getTotalDays(): Int
+
+    /**
+     * Advance a progress-based plan by one reading, to be called after a reading
+     * is actually delivered (not skipped). No-op for calendar-driven plans.
+     */
+    fun advanceProgress() {}
 }
