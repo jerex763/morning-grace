@@ -72,22 +72,34 @@ class BroadcastOrchestrator @Inject constructor(
         val newsJob    = async { newsRepo.getTopHeadlines(3) }
 
         Log.d(TAG, "prepare() loading bible plan for $date")
-        val passage = if (!config.skipBible) readingPlan.getReadingForDate(date).firstOrNull() else null
-        Log.d(TAG, "prepare() bible passage: $passage (skipBible=${config.skipBible})")
+        val passages = if (!config.skipBible) readingPlan.getReadingForDate(date) else emptyList()
+        Log.d(TAG, "prepare() bible passages: $passages (skipBible=${config.skipBible})")
 
-        val passageName = passage?.toChineseTitle() ?: ""
+        val passageName = passages.joinToString("、") { it.toChineseTitle() }
 
-        val bibleZh = if (passage != null) {
-            bibleRepo.getVersesForPassage(passage, "zh")
+        // Multi-passage plans (e.g. McCheyne, 4/day) announce each passage title before its text.
+        val zhSections = passages.mapNotNull { p ->
+            bibleRepo.getVersesForPassage(p, "zh")
                 .joinToString(" ") { it.text }
-                .ifBlank { "今日经文暂不可用" }
-        } else if (config.skipBible) "" else "今日经文暂不可用"
+                .ifBlank { null }
+                ?.let { if (passages.size > 1) "${p.toChineseTitle()}。$it" else it }
+        }
+        val bibleZh = when {
+            config.skipBible -> ""
+            zhSections.isEmpty() -> "今日经文暂不可用"
+            else -> zhSections.joinToString("。")
+        }
 
-        val bibleEn = if (passage != null) {
-            bibleRepo.getVersesForPassage(passage, "en")
+        val enSections = passages.mapNotNull { p ->
+            bibleRepo.getVersesForPassage(p, "en")
                 .joinToString(" ") { it.text }
-                .ifBlank { "Bible reading unavailable" }
-        } else if (config.skipBible) "" else "Bible reading unavailable"
+                .ifBlank { null }
+        }
+        val bibleEn = when {
+            config.skipBible -> ""
+            enSections.isEmpty() -> "Bible reading unavailable"
+            else -> enSections.joinToString(" ")
+        }
 
         Log.d(TAG, "prepare() bible done")
 

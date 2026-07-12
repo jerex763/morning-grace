@@ -9,7 +9,11 @@ data class FinanceData(
         val direction = if (changePercent >= 0) "涨" else "跌"
         val pct = formatPct(kotlin.math.abs(changePercent))
         val priceStr = if (indexName == "比特币") {
-            "${toChineseNumber((price / 10000).toInt())}万美元"
+            val wan = price / 10_000
+            val whole = wan.toInt()
+            val tenth = ((wan - whole) * 10).toInt()
+            if (tenth == 0) "${toChineseNumber(whole)}万美元"
+            else "${toChineseNumber(whole)}点${DIGITS[tenth]}万美元"
         } else {
             "${toChineseNumber(price.toInt())}点"
         }

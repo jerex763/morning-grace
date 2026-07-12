@@ -123,6 +123,20 @@ class BroadcastOrchestratorTest {
         assertEquals(BroadcastState.Idle, orchestrator.state)
     }
 
+    @Test
+    fun `mccheyne plan fetches all four passages per day`() = runTest {
+        coEvery { bibleRepo.getVersesForPassage(any(), any()) } returns listOf(
+            BibleVerse(1, 1, 1, "zh", "经文")
+        )
+        every { ttsEngine.isAvailable() } returns true
+
+        orchestrator.broadcast(LocalDate.of(2026, 1, 1))
+
+        // 4 passages × 2 languages
+        coVerify(exactly = 4) { bibleRepo.getVersesForPassage(any(), "zh") }
+        coVerify(exactly = 4) { bibleRepo.getVersesForPassage(any(), "en") }
+    }
+
     // ── weather module ──────────────────────────────────────────────────────
 
     @Test

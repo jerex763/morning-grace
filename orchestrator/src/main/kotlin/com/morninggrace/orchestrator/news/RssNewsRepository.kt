@@ -25,10 +25,11 @@ class RssNewsRepository @Inject constructor(
                     response.body?.string()
                 } ?: return@runCatching emptyList()
 
-                Regex("<title>(?:<!\\[CDATA\\[)?([^<\\]]{5,})(?:]]>)?</title>")
+                // Item-scoped so the channel/image <title> is never picked up,
+                // and CDATA titles containing "]" or "<" survive.
+                Regex("<item>.*?<title>(?:<!\\[CDATA\\[)?(.*?)(?:]]>)?</title>", RegexOption.DOT_MATCHES_ALL)
                     .findAll(body)
                     .mapNotNull { it.groupValues[1].trim().ifBlank { null } }
-                    .filter { it != "BBC Chinese" && !it.startsWith("BBC") }
                     .take(count)
                     .map { NewsHeadline(it) }
                     .toList()

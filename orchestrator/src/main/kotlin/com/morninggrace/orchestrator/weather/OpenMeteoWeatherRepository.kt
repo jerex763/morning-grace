@@ -25,7 +25,7 @@ class OpenMeteoWeatherRepository @Inject constructor(
                         if (!response.isSuccessful) return@runCatching null
                         response.body?.string()
                     } ?: return@runCatching null
-                fun extractDouble(key: String) = Regex(""""$key"\s*:\s*([\d.]+)""")
+                fun extractDouble(key: String) = Regex(""""$key"\s*:\s*(-?[\d.]+)""")
                     .find(body)?.groupValues?.get(1)?.toDoubleOrNull()
                 val temp     = extractDouble("temperature_2m")     ?: return@runCatching null
                 val code     = extractDouble("weather_code")?.toInt() ?: return@runCatching null

@@ -1,6 +1,7 @@
 package com.morninggrace.tts
 
 import android.content.Context
+import android.media.AudioAttributes
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import com.morninggrace.core.model.Language
@@ -28,10 +29,23 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
     }
 
     /** Must be called before [speak]. Suspends until TTS engine is initialised. */
-    suspend fun attach(context: Context) = suspendCancellableCoroutine<Unit> { cont ->
-        tts = TextToSpeech(context) { status ->
-            onInitResult(status)
-            if (cont.isActive) cont.resume(Unit)
+    suspend fun attach(context: Context) {
+        if (tts != null) return
+        suspendCancellableCoroutine<Unit> { cont ->
+            tts = TextToSpeech(context) { status ->
+                onInitResult(status)
+                if (status == TextToSpeech.SUCCESS) {
+                    // Alarm stream: the morning broadcast must be audible even when
+                    // media volume is muted overnight.
+                    tts?.setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ALARM)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                            .build()
+                    )
+                }
+                if (cont.isActive) cont.resume(Unit)
+            }
         }
     }
 
@@ -67,6 +81,11 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
                 override fun onError(id: String, errorCode: Int) {
                     if (id == utteranceId && cont.isActive)
                         cont.resumeWithException(RuntimeException("TTS error on utterance $id, code $errorCode"))
+                }
+                // External stop() flushes the queue without onDone/onError — resume
+                // so the caller doesn't hang forever.
+                override fun onStop(id: String?, interrupted: Boolean) {
+                    if (id == utteranceId && cont.isActive) cont.resume(Unit)
                 }
                 @Deprecated("Deprecated in Java")
                 override fun onError(id: String) {

@@ -78,6 +78,16 @@ class FinanceDataTest {
         assertTrue("expected 万美元 in: $speech", speech.contains("万美元"))
     }
 
+    @Test fun `bitcoin keeps one decimal of 万`() {
+        val speech = FinanceData("比特币", 67_890.0, 1.0).toSpeechZh()
+        assertTrue("expected 六点七万美元 in: $speech", speech.contains("六点七万美元"))
+    }
+
+    @Test fun `bitcoin round 万 has no decimal`() {
+        val speech = FinanceData("比特币", 60_000.0, 1.0).toSpeechZh()
+        assertTrue("expected 六万美元 in: $speech", speech.contains("六万美元"))
+    }
+
     @Test fun `non-bitcoin shows 点`() {
         val speech = FinanceData("上证指数", 3200.0, -0.5).toSpeechZh()
         assertTrue("expected 点 in: $speech", speech.contains("点"))

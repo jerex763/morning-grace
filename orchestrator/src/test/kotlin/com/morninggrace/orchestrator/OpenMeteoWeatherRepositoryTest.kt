@@ -41,6 +41,23 @@ class OpenMeteoWeatherRepositoryTest {
     }
 
     @Test
+    fun `parses negative temperature`() = runTest {
+        val json = """{"current":{"temperature_2m":-8.5,"weather_code":71,"relative_humidity_2m":80,"wind_speed_10m":5.0,"uv_index":0.5}}"""
+        val mockCall = mockk<Call>()
+        val response = Response.Builder()
+            .request(Request.Builder().url("https://api.open-meteo.com").build())
+            .protocol(Protocol.HTTP_1_1).code(200).message("OK")
+            .body(json.toResponseBody()).build()
+        every { mockClient.newCall(any()) } returns mockCall
+        every { mockCall.execute() } returns response
+
+        val result = repo.getCurrentWeather(64.13, -21.9)
+
+        assertEquals(-8.5, result?.temperatureCelsius)
+        assertEquals(71, result?.weatherCode)
+    }
+
+    @Test
     fun `returns null on network failure`() = runTest {
         val mockCall = mockk<Call>()
         every { mockClient.newCall(any()) } returns mockCall

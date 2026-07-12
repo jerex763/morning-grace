@@ -62,6 +62,11 @@ class AlarmService : Service() {
 
         startForeground(NOTIFICATION_ID, buildNotification())
 
+        if (broadcastJob?.isActive == true) {
+            android.util.Log.w("MorningGrace", "AlarmService: broadcast already running, ignoring start")
+            return START_NOT_STICKY
+        }
+
         broadcastJob = serviceScope.launch {
             android.util.Log.d("MorningGrace", "AlarmService: attaching TTS")
             ttsEngine.attach(this@AlarmService)
