@@ -2,10 +2,14 @@ package com.morninggrace.orchestrator
 
 data class BroadcastContent(
     val greeting: String,
-    val passageName: String,   // e.g. "马太福音第一章", blank when Bible is skipped
+    val passageName: String,          // combined titles for the confirmation prompt, blank when skipped
     val weather: String,
-    val bibleZh: String,
-    val bibleEn: String,
+    val passages: List<PassageReading>,
     val marketSummary: String,
     val newsSummary: String
+)
+
+data class PassageReading(
+    val zh: String,
+    val en: String
 )

@@ -1,12 +1,15 @@
 package com.morninggrace.orchestrator.weather
 
 import com.morninggrace.core.model.WeatherData
+import com.morninggrace.core.net.await
 import com.morninggrace.core.repository.WeatherRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONObject
 import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 
 class OpenMeteoWeatherRepository @Inject constructor(
     private val client: OkHttpClient
@@ -14,31 +17,37 @@ class OpenMeteoWeatherRepository @Inject constructor(
 
     override suspend fun getCurrentWeather(lat: Double, lon: Double): WeatherData? =
         withContext(Dispatchers.IO) {
-            runCatching {
+            try {
                 val url = "https://api.open-meteo.com/v1/forecast" +
                     "?latitude=$lat&longitude=$lon" +
                     "&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m,uv_index" +
                     "&timezone=auto"
                 val body = client.newCall(Request.Builder().url(url).build())
-                    .execute()
+                    .await()
                     .use { response ->
-                        if (!response.isSuccessful) return@runCatching null
+                        if (!response.isSuccessful) return@withContext null
                         response.body?.string()
-                    } ?: return@runCatching null
-                fun extractDouble(key: String) = Regex(""""$key"\s*:\s*([\d.]+)""")
-                    .find(body)?.groupValues?.get(1)?.toDoubleOrNull()
-                val temp     = extractDouble("temperature_2m")     ?: return@runCatching null
-                val code     = extractDouble("weather_code")?.toInt() ?: return@runCatching null
-                val humidity = extractDouble("relative_humidity_2m")?.toInt() ?: return@runCatching null
-                val wind     = extractDouble("wind_speed_10m")      ?: return@runCatching null
-                val uv       = extractDouble("uv_index")            ?: 0.0
-                WeatherData(
-                    temperatureCelsius = temp,
-                    weatherCode = code,
-                    humidity = humidity,
-                    windSpeedKmh = wind,
-                    uvIndex = uv
-                )
-            }.getOrNull()
+                    } ?: return@withContext null
+                parse(body)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
         }
+
+    private fun parse(body: String): WeatherData? {
+        val current = JSONObject(body).optJSONObject("current") ?: return null
+        val temp = current.optDouble("temperature_2m", Double.NaN)
+        val wind = current.optDouble("wind_speed_10m", Double.NaN)
+        if (temp.isNaN() || wind.isNaN()) return null
+        val uv = current.optDouble("uv_index", 0.0)
+        return WeatherData(
+            temperatureCelsius = temp,
+            weatherCode = current.optInt("weather_code", 0),
+            humidity = current.optInt("relative_humidity_2m", 0),
+            windSpeedKmh = wind,
+            uvIndex = if (uv.isNaN()) 0.0 else uv
+        )
+    }
 }

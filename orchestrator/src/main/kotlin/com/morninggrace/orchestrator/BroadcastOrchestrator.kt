@@ -67,39 +67,40 @@ class BroadcastOrchestrator @Inject constructor(
 
     private suspend fun prepare(date: LocalDate, config: BroadcastConfig): BroadcastContent = coroutineScope {
         val location = locationRepo.get()
-        val weatherJob = async { weatherRepo.getCurrentWeather(location.lat, location.lon) }
-        val financeJob = async { financeRepo.getMarketData() }
-        val newsJob    = async { newsRepo.getTopHeadlines(3) }
+        // Only fetch modules that are enabled — skipped modules make no network calls.
+        val weatherJob = if (!config.skipWeather) async { weatherRepo.getCurrentWeather(location.lat, location.lon) } else null
+        val financeJob = if (!config.skipFinance) async { financeRepo.getMarketData() } else null
+        val newsJob    = if (!config.skipNews)    async { newsRepo.getTopHeadlines(3) } else null
 
         Log.d(TAG, "prepare() loading bible plan for $date")
-        val passage = if (!config.skipBible) readingPlan.getReadingForDate(date).firstOrNull() else null
-        Log.d(TAG, "prepare() bible passage: $passage (skipBible=${config.skipBible})")
+        val passages = if (!config.skipBible) readingPlan.getReadingForDate(date) else emptyList()
+        Log.d(TAG, "prepare() bible passages: $passages (skipBible=${config.skipBible})")
 
-        val passageName = passage?.toChineseTitle() ?: ""
+        val passageName = passages.joinToString("、") { it.toChineseTitle() }
 
-        val bibleZh = if (passage != null) {
-            bibleRepo.getVersesForPassage(passage, "zh")
-                .joinToString(" ") { it.text }
-                .ifBlank { "今日经文暂不可用" }
-        } else if (config.skipBible) "" else "今日经文暂不可用"
+        val readings = passages.map { passage ->
+            PassageReading(
+                zh = bibleRepo.getVersesForPassage(passage, "zh")
+                    .joinToString(" ") { it.text }.ifBlank { "今日经文暂不可用" },
+                en = bibleRepo.getVersesForPassage(passage, "en")
+                    .joinToString(" ") { it.text }.ifBlank { "Bible reading unavailable" }
+            )
+        }
+        Log.d(TAG, "prepare() bible done (${readings.size} passages)")
 
-        val bibleEn = if (passage != null) {
-            bibleRepo.getVersesForPassage(passage, "en")
-                .joinToString(" ") { it.text }
-                .ifBlank { "Bible reading unavailable" }
-        } else if (config.skipBible) "" else "Bible reading unavailable"
+        val weather = if (weatherJob != null) weatherJob.await()?.toSpeechZh() ?: "天气暂时无法获取" else ""
 
-        Log.d(TAG, "prepare() bible done")
+        val marketSummary = if (financeJob != null) {
+            val marketList = financeJob.await()
+            if (marketList.isEmpty()) "市场数据暂时无法获取"
+            else marketList.joinToString("；") { it.toSpeechZh() }
+        } else ""
 
-        val weather = weatherJob.await()?.toSpeechZh() ?: "天气暂时无法获取"
-
-        val marketList = financeJob.await()
-        val marketSummary = if (marketList.isEmpty()) "市场数据暂时无法获取"
-        else marketList.joinToString("；") { it.toSpeechZh() }
-
-        val newsList = newsJob.await()
-        val newsSummary = if (newsList.isEmpty()) "新闻暂时无法获取"
-        else newsList.joinToString("。") { it.title }
+        val newsSummary = if (newsJob != null) {
+            val newsList = newsJob.await()
+            if (newsList.isEmpty()) "新闻暂时无法获取"
+            else newsList.joinToString("。") { it.title }
+        } else ""
 
         Log.d(TAG, "prepare() weather=$weather")
         Log.d(TAG, "prepare() market=$marketSummary")
@@ -109,8 +110,7 @@ class BroadcastOrchestrator @Inject constructor(
             greeting = "早安，晨光播报开始。",
             passageName = passageName,
             weather = weather,
-            bibleZh = bibleZh,
-            bibleEn = bibleEn,
+            passages = readings,
             marketSummary = marketSummary,
             newsSummary = newsSummary
         )
@@ -132,9 +132,11 @@ class BroadcastOrchestrator @Inject constructor(
             }
         }
 
-        if (!actuallySkipBible && content.bibleZh.isNotBlank()) {
-            safeSpeak(content.bibleZh, Language.ZH)
-            safeSpeak(content.bibleEn, Language.EN)
+        if (!actuallySkipBible && content.passages.isNotEmpty()) {
+            for (passage in content.passages) {
+                safeSpeak(passage.zh, Language.ZH)
+                safeSpeak(passage.en, Language.EN)
+            }
             if (!config.skipFinance || !config.skipNews) {
                 safeSpeak("今日读经结束。", Language.ZH)
             }
