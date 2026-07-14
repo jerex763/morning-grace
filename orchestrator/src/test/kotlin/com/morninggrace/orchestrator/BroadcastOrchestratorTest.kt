@@ -203,6 +203,23 @@ class BroadcastOrchestratorTest {
     }
 
     @Test
+    fun `broadcast reads all four McCheyne passages`() = runTest {
+        coEvery { bibleRepo.getVersesForPassage(any(), "zh") } returns listOf(
+            BibleVerse(1, 1, 1, "zh", "经文")
+        )
+        coEvery { bibleRepo.getVersesForPassage(any(), "en") } returns listOf(
+            BibleVerse(1, 1, 1, "en", "verse")
+        )
+        every { ttsEngine.isAvailable() } returns true
+
+        // Jan 1 = McCheyne day 1 → 4 passages (2 OT + 2 NT streams)
+        orchestrator.broadcast(LocalDate.of(2026, 1, 1))
+
+        coVerify(exactly = 4) { bibleRepo.getVersesForPassage(any(), "zh") }
+        coVerify(exactly = 4) { bibleRepo.getVersesForPassage(any(), "en") }
+    }
+
+    @Test
     fun `voice confirm reads bible`() = runTest {
         coEvery { bibleRepo.getVersesForPassage(any(), "zh") } returns listOf(
             BibleVerse(1, 1, 1, "zh", "起初，神创造天地。")

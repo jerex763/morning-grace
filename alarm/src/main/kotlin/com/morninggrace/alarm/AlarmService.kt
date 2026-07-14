@@ -1,13 +1,19 @@
 package com.morninggrace.alarm
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
 import com.morninggrace.core.model.BroadcastConfig
 import com.morninggrace.orchestrator.MorningSession
 import com.morninggrace.tts.AndroidTtsEngine
@@ -19,6 +25,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+private const val TAG = "MorningGrace"
 
 @AndroidEntryPoint
 class AlarmService : Service() {
@@ -52,6 +60,14 @@ class AlarmService : Service() {
             return START_NOT_STICKY
         }
 
+        if (!startForegroundCompat()) return START_NOT_STICKY
+
+        // Idempotent: ignore duplicate starts while a broadcast is already running.
+        if (broadcastJob?.isActive == true) {
+            Log.d(TAG, "AlarmService: broadcast already running, ignoring duplicate start")
+            return START_NOT_STICKY
+        }
+
         val prefs = getSharedPreferences(AlarmReceiver.PREFS, MODE_PRIVATE)
         val config = BroadcastConfig(
             skipWeather = !prefs.getBoolean(KEY_MODULE_WEATHER, true),
@@ -60,18 +76,36 @@ class AlarmService : Service() {
             skipNews    = !prefs.getBoolean(KEY_MODULE_NEWS,    true)
         )
 
-        startForeground(NOTIFICATION_ID, buildNotification())
-
         broadcastJob = serviceScope.launch {
-            android.util.Log.d("MorningGrace", "AlarmService: attaching TTS")
+            Log.d(TAG, "AlarmService: attaching TTS")
             ttsEngine.attach(this@AlarmService)
-            android.util.Log.d("MorningGrace", "AlarmService: TTS attached, starting session")
+            Log.d(TAG, "AlarmService: TTS attached, starting session")
             morningSession.start(config)
-            android.util.Log.d("MorningGrace", "AlarmService: session done")
+            Log.d(TAG, "AlarmService: session done")
             stopSelf()
         }
 
         return START_NOT_STICKY
+    }
+
+    /**
+     * Starts the foreground service with the microphone type only when RECORD_AUDIO is granted.
+     * Android 14 throws if a declared FGS type lacks its prerequisite permission.
+     * @return false if startup was rejected by the platform (service is stopping).
+     */
+    private fun startForegroundCompat(): Boolean {
+        val micGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
+        var type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+        if (micGranted) type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        return try {
+            ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), type)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "startForeground failed: ${e.message}", e)
+            stopSelf()
+            false
+        }
     }
 
     override fun onDestroy() {

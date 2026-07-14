@@ -27,7 +27,7 @@ class AlarmScheduler @Inject constructor(
             context, ALARM_REQUEST_CODE, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val info = AlarmManager.AlarmClockInfo(triggerAt, pending)
+        val info = AlarmManager.AlarmClockInfo(triggerAt, showIntent())
         alarmManager.setAlarmClock(info, pending)
     }
 
@@ -38,6 +38,15 @@ class AlarmScheduler @Inject constructor(
             PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
         ) ?: return
         alarmManager.cancel(pending)
+    }
+
+    /** Activity PendingIntent for the system's upcoming-alarm UI — opens the app, never fires the alarm. */
+    private fun showIntent(): PendingIntent? {
+        val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return null
+        return PendingIntent.getActivity(
+            context, ALARM_REQUEST_CODE, launch,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 
     private fun nextAlarmMillis(hour: Int, minute: Int): Long {

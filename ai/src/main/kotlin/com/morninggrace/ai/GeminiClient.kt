@@ -2,6 +2,7 @@ package com.morninggrace.ai
 
 import android.content.Context
 import android.util.Log
+import com.morninggrace.core.net.await
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -13,6 +14,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.cancellation.CancellationException
 
 private const val TAG = "MorningGrace"
 private const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent"
@@ -32,21 +34,27 @@ class GeminiClient @Inject constructor(
             val key = apiKey()
             if (key.isBlank()) return@withContext null
 
-            runCatching {
+            try {
                 val body = buildRequestJson(systemPrompt, messages)
                 val request = Request.Builder()
-                    .url("$BASE_URL?key=$key")
+                    .url(BASE_URL)
+                    .header("x-goog-api-key", key)
                     .post(body.toString().toRequestBody("application/json".toMediaType()))
                     .build()
 
-                httpClient.newCall(request).execute().use { response ->
+                httpClient.newCall(request).await().use { response ->
                     if (!response.isSuccessful) {
                         Log.w(TAG, "Gemini HTTP ${response.code}")
                         return@use null
                     }
                     parseResponse(response.body?.string() ?: return@use null)
                 }
-            }.onFailure { Log.e(TAG, "Gemini error: ${it.message}") }.getOrNull()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Gemini error: ${e.message}")
+                null
+            }
         }
 
     private fun buildRequestJson(systemPrompt: String, messages: List<ChatMessage>): JSONObject {

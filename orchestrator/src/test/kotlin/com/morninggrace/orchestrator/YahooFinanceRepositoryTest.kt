@@ -5,6 +5,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Request
@@ -13,29 +14,27 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.IOException
 
 class YahooFinanceRepositoryTest {
 
     private val mockClient = mockk<OkHttpClient>()
     private val repo = YahooFinanceRepository(mockClient)
 
-    private fun mockResponse(json: String): Call {
-        val call = mockk<Call>()
+    private fun okCall(json: String): Call {
+        val call = mockk<Call>(relaxed = true)
         val response = Response.Builder()
             .request(Request.Builder().url("https://query1.finance.yahoo.com").build())
-            .protocol(Protocol.HTTP_1_1)
-            .code(200).message("OK")
-            .body(json.toResponseBody())
-            .build()
-        every { call.execute() } returns response
+            .protocol(Protocol.HTTP_1_1).code(200).message("OK")
+            .body(json.toResponseBody()).build()
+        every { call.enqueue(any()) } answers { firstArg<Callback>().onResponse(call, response) }
         return call
     }
 
     @Test
     fun `getMarketData returns data for all tickers`() = runTest {
-        val json = """{"chart":{"result":[{"meta":{"regularMarketPrice":5000.0,"chartPreviousClose":4900.0}}]}}"""
-        // Each of the 4 tickers gets its own call - return valid json for all
-        every { mockClient.newCall(any()) } answers { mockResponse(json) }
+        val json = """{"chart":{"result":[{"meta":{"regularMarketPrice":5000.0,"chartPreviousClose":4900.0}}],"error":null}}"""
+        every { mockClient.newCall(any()) } answers { okCall(json) }
 
         val result = repo.getMarketData()
 
@@ -45,14 +44,28 @@ class YahooFinanceRepositoryTest {
     }
 
     @Test
+    fun `getMarketData drops tickers with error payload`() = runTest {
+        val json = """{"chart":{"result":null,"error":{"code":"Not Found"}}}"""
+        every { mockClient.newCall(any()) } answers { okCall(json) }
+
+        assertTrue(repo.getMarketData().isEmpty())
+    }
+
+    @Test
+    fun `getMarketData drops tickers with empty result`() = runTest {
+        val json = """{"chart":{"result":[],"error":null}}"""
+        every { mockClient.newCall(any()) } answers { okCall(json) }
+
+        assertTrue(repo.getMarketData().isEmpty())
+    }
+
+    @Test
     fun `getMarketData returns empty list on network failure`() = runTest {
-        val call = mockk<Call>()
-        every { call.execute() } throws RuntimeException("timeout")
+        val call = mockk<Call>(relaxed = true)
+        every { call.enqueue(any()) } answers { firstArg<Callback>().onFailure(call, IOException("timeout")) }
         every { mockClient.newCall(any()) } returns call
 
-        val result = repo.getMarketData()
-
-        assertTrue(result.isEmpty())
+        assertTrue(repo.getMarketData().isEmpty())
     }
 
     @Test

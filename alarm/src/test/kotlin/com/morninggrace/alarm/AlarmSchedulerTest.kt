@@ -20,6 +20,7 @@ class AlarmSchedulerTest {
     fun setUp() {
         mockkStatic(PendingIntent::class)
         every { PendingIntent.getBroadcast(any(), any(), any(), any()) } returns mockk(relaxed = true)
+        every { PendingIntent.getActivity(any(), any(), any(), any<Int>()) } returns mockk(relaxed = true)
     }
 
     @After

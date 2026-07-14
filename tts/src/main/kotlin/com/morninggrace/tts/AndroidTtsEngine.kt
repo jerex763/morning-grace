@@ -27,12 +27,16 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
         android.util.Log.d("MorningGrace", "TTS onInit: status=$status ready=$ready (SUCCESS=${TextToSpeech.SUCCESS})")
     }
 
-    /** Must be called before [speak]. Suspends until TTS engine is initialised. */
+    /** Must be called before [speak]. Suspends until TTS engine is initialised; throws on failure. */
     suspend fun attach(context: Context) = suspendCancellableCoroutine<Unit> { cont ->
-        tts = TextToSpeech(context) { status ->
+        val engine = TextToSpeech(context) { status ->
             onInitResult(status)
-            if (cont.isActive) cont.resume(Unit)
+            if (!cont.isActive) return@TextToSpeech
+            if (status == TextToSpeech.SUCCESS) cont.resume(Unit)
+            else cont.resumeWithException(RuntimeException("TTS init failed, status=$status"))
         }
+        tts = engine
+        cont.invokeOnCancellation { engine.stop(); engine.shutdown() }
     }
 
     fun detach() {
