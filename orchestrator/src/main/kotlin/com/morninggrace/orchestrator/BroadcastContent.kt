@@ -10,6 +10,7 @@ data class BroadcastContent(
 )
 
 data class PassageReading(
+    val titleZh: String,
     val zh: String,
     val en: String
 )

@@ -80,10 +80,15 @@ class BroadcastOrchestrator @Inject constructor(
 
         val readings = passages.map { passage ->
             PassageReading(
+                titleZh = passage.toChineseTitle(),
                 zh = bibleRepo.getVersesForPassage(passage, "zh")
                     .joinToString(" ") { it.text }.ifBlank { "今日经文暂不可用" },
-                en = bibleRepo.getVersesForPassage(passage, "en")
-                    .joinToString(" ") { it.text }.ifBlank { "Bible reading unavailable" }
+                en = if (config.includeEnglishBible) {
+                    bibleRepo.getVersesForPassage(passage, "en")
+                        .joinToString(" ") { it.text }.ifBlank { "Bible reading unavailable" }
+                } else {
+                    ""
+                }
             )
         }
         Log.d(TAG, "prepare() bible done (${readings.size} passages)")
@@ -134,8 +139,11 @@ class BroadcastOrchestrator @Inject constructor(
 
         if (!actuallySkipBible && content.passages.isNotEmpty()) {
             for (passage in content.passages) {
+                safeSpeak("现在读${passage.titleZh}。", Language.ZH)
                 safeSpeak(passage.zh, Language.ZH)
-                safeSpeak(passage.en, Language.EN)
+                if (config.includeEnglishBible && passage.en.isNotBlank()) {
+                    safeSpeak(passage.en, Language.EN)
+                }
             }
             if (!config.skipFinance || !config.skipNews) {
                 safeSpeak("今日读经结束。", Language.ZH)

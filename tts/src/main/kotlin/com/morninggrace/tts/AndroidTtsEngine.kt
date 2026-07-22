@@ -29,6 +29,7 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
 
     /** Must be called before [speak]. Suspends until TTS engine is initialised; throws on failure. */
     suspend fun attach(context: Context) = suspendCancellableCoroutine<Unit> { cont ->
+        attachedContext = context.applicationContext
         val engine = TextToSpeech(context) { status ->
             onInitResult(status)
             if (!cont.isActive) return@TextToSpeech
@@ -43,6 +44,7 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
         tts?.stop()
         tts?.shutdown()
         tts = null
+        attachedContext = null
         ready = false
     }
 
@@ -55,10 +57,19 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
         require(ready) { "AndroidTtsEngine not ready" }
 
         val locale = when (language) {
-            Language.ZH -> Locale.CHINESE
+            Language.ZH -> Locale.SIMPLIFIED_CHINESE
             Language.EN -> Locale.ENGLISH
         }
         engine.language = locale
+        val speechRate = if (language == Language.ZH) {
+            attachedContext
+                ?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                ?.getFloat(KEY_CHINESE_SPEECH_RATE, DEFAULT_CHINESE_SPEECH_RATE)
+                ?: DEFAULT_CHINESE_SPEECH_RATE
+        } else {
+            1.0f
+        }
+        engine.setSpeechRate(speechRate)
 
         val utteranceId = UUID.randomUUID().toString()
 
@@ -86,5 +97,13 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
 
             cont.invokeOnCancellation { engine.stop() }
         }
+    }
+
+    @Volatile private var attachedContext: Context? = null
+
+    companion object {
+        const val PREFS = "alarm_prefs"
+        const val KEY_CHINESE_SPEECH_RATE = "chinese_speech_rate"
+        const val DEFAULT_CHINESE_SPEECH_RATE = 0.88f
     }
 }

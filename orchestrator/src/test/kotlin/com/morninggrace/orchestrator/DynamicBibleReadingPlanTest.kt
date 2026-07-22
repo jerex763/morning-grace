@@ -31,6 +31,8 @@ class DynamicBibleReadingPlanTest {
     fun setUp() {
         // Default: no preference set → falls back to McCheyne
         every { prefs.getString(DynamicBibleReadingPlan.KEY, any()) } returns null
+        every { prefs.getInt(any(), any()) } answers { secondArg() }
+        every { prefs.contains(any()) } returns false
     }
 
     @Test fun `defaults to McCheyne when no preference set`() {
@@ -57,14 +59,31 @@ class DynamicBibleReadingPlanTest {
         assertEquals(4, plan.getReadingForDate(date).size)
     }
 
+    @Test fun `McCheyne exposes calendar day as default progress`() {
+        every { prefs.getString(DynamicBibleReadingPlan.KEY, any()) } returns DynamicBibleReadingPlan.ID_MCCHEYNE
+        assertEquals(219, plan.getCurrentDay(LocalDate.of(2026, 8, 7)))
+    }
+
     @Test fun `sequential returns 1 passage per day`() {
         every { prefs.getString(DynamicBibleReadingPlan.KEY, any()) } returns DynamicBibleReadingPlan.ID_SEQUENTIAL
         assertEquals(1, plan.getReadingForDate(date).size)
     }
 
-    @Test fun `chapter-a-day returns 1 passage per day`() {
+    @Test fun `chapter-a-day returns 3 passages per day`() {
         every { prefs.getString(DynamicBibleReadingPlan.KEY, any()) } returns DynamicBibleReadingPlan.ID_CHAPTER_A_DAY
-        assertEquals(1, plan.getReadingForDate(date).size)
+        assertEquals(3, plan.getReadingForDate(date).size)
+    }
+
+    @Test fun `chapter-a-day uses saved starting book and chapter`() {
+        every { prefs.getString(DynamicBibleReadingPlan.KEY, any()) } returns DynamicBibleReadingPlan.ID_CHAPTER_A_DAY
+        every { prefs.getInt(DynamicBibleReadingPlan.KEY_CHAPTER_A_DAY_BOOK, 1) } returns 19
+        every { prefs.getInt(DynamicBibleReadingPlan.KEY_CHAPTER_A_DAY_CHAPTER, 1) } returns 23
+
+        val readings = plan.getReadingForDate(date)
+        assertEquals(3, readings.size)
+        val passage = readings.first()
+        assertEquals(19, passage.book)
+        assertEquals(23, passage.chapter)
     }
 
     @Test fun `delegates nameZh to active plan`() {

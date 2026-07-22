@@ -39,6 +39,7 @@ class AlarmService : Service() {
         // SharedPrefs keys for module toggles (default: all enabled)
         const val KEY_MODULE_WEATHER = "module_weather"
         const val KEY_MODULE_BIBLE   = "module_bible"
+        const val KEY_BIBLE_ENGLISH  = "bible_english"
         const val KEY_MODULE_FINANCE = "module_finance"
         const val KEY_MODULE_NEWS    = "module_news"
     }
@@ -72,6 +73,7 @@ class AlarmService : Service() {
         val config = BroadcastConfig(
             skipWeather = !prefs.getBoolean(KEY_MODULE_WEATHER, true),
             skipBible   = !prefs.getBoolean(KEY_MODULE_BIBLE,   true),
+            includeEnglishBible = prefs.getBoolean(KEY_BIBLE_ENGLISH, false),
             skipFinance = !prefs.getBoolean(KEY_MODULE_FINANCE, true),
             skipNews    = !prefs.getBoolean(KEY_MODULE_NEWS,    true)
         )
