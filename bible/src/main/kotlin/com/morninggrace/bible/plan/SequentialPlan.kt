@@ -26,7 +26,7 @@ class SequentialPlan(
 
     companion object {
         // Protestant 66-book canon chapter counts (OT 39 books, NT 27 books)
-        private val BOOK_CHAPTER_COUNTS = listOf(
+        val BOOK_CHAPTER_COUNTS = listOf(
             // OT (books 1–39)
             50, 40, 27, 36, 34, 24, 21, 4, 31, 24,
             22, 25, 29, 36, 10, 13, 10, 42, 150, 31,

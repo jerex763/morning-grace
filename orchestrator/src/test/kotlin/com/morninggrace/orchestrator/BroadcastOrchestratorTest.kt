@@ -11,6 +11,7 @@ import com.morninggrace.core.repository.NewsRepository
 import com.morninggrace.core.repository.WeatherRepository
 import com.morninggrace.core.model.BroadcastConfig
 import com.morninggrace.core.model.ConfirmationResult
+import com.morninggrace.core.model.Language
 import com.morninggrace.tts.SpeechEngine
 import com.morninggrace.tts.TtsEngine
 import io.mockk.coEvery
@@ -203,7 +204,7 @@ class BroadcastOrchestratorTest {
     }
 
     @Test
-    fun `broadcast reads all four McCheyne passages`() = runTest {
+    fun `broadcast reads all four McCheyne passages in Chinese only by default`() = runTest {
         coEvery { bibleRepo.getVersesForPassage(any(), "zh") } returns listOf(
             BibleVerse(1, 1, 1, "zh", "经文")
         )
@@ -216,7 +217,30 @@ class BroadcastOrchestratorTest {
         orchestrator.broadcast(LocalDate.of(2026, 1, 1))
 
         coVerify(exactly = 4) { bibleRepo.getVersesForPassage(any(), "zh") }
+        coVerify(exactly = 0) { bibleRepo.getVersesForPassage(any(), "en") }
+        coVerify(exactly = 0) { ttsEngine.speak("verse", Language.EN) }
+        coVerify(exactly = 4) {
+            ttsEngine.speak(match { it.startsWith("现在读") }, Language.ZH)
+        }
+    }
+
+    @Test
+    fun `English Bible is fetched and spoken when enabled`() = runTest {
+        coEvery { bibleRepo.getVersesForPassage(any(), "zh") } returns listOf(
+            BibleVerse(1, 1, 1, "zh", "经文")
+        )
+        coEvery { bibleRepo.getVersesForPassage(any(), "en") } returns listOf(
+            BibleVerse(1, 1, 1, "en", "verse")
+        )
+        every { ttsEngine.isAvailable() } returns true
+
+        orchestrator.broadcast(
+            LocalDate.of(2026, 1, 1),
+            BroadcastConfig(includeEnglishBible = true)
+        )
+
         coVerify(exactly = 4) { bibleRepo.getVersesForPassage(any(), "en") }
+        coVerify(exactly = 4) { ttsEngine.speak("verse", Language.EN) }
     }
 
     @Test
