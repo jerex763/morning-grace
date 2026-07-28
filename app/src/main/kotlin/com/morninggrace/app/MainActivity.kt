@@ -12,6 +12,7 @@ import android.net.NetworkRequest
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.text.format.Formatter
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.LinearLayout
@@ -36,6 +37,7 @@ import com.morninggrace.alarm.AlarmPermissionChecker
 import com.morninggrace.alarm.AlarmScheduler
 import com.morninggrace.alarm.AlarmService
 import com.morninggrace.bible.BookNames
+import com.morninggrace.bible.audio.BibleAudioLibrary
 import com.morninggrace.bible.plan.SequentialPlan
 import com.morninggrace.bible.toChineseTitle
 import com.morninggrace.core.model.AlarmConfig
@@ -62,6 +64,7 @@ class MainActivity : AppCompatActivity() {
     @Inject lateinit var weatherRepo: WeatherRepository
     @Inject lateinit var financeRepo: FinanceRepository
     @Inject lateinit var newsRepo: NewsRepository
+    @Inject lateinit var bibleAudioLibrary: BibleAudioLibrary
 
     private lateinit var prefs: SharedPreferences
     private lateinit var locationStatus: TextView
@@ -89,6 +92,31 @@ class MainActivity : AppCompatActivity() {
     ) { permissions ->
         if (permissions.values.any { it }) fetchLocation()
         else locationStatus.text = "位置权限被拒绝"
+    }
+
+    private val bibleAudioImportLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        if (uris.isEmpty()) return@registerForActivityResult
+        val button = findViewById<MaterialButton>(R.id.importBibleAudioButton)
+        val status = findViewById<TextView>(R.id.bibleAudioStatus)
+        button.isEnabled = false
+        status.text = "正在导入 ${uris.size} 个音频包，请保持应用开启…"
+        lifecycleScope.launch {
+            val result = bibleAudioLibrary.importZipArchives(contentResolver, uris)
+            button.isEnabled = true
+            updateBibleAudioStatus()
+            AlertDialog.Builder(this@MainActivity)
+                .setTitle("真人圣经录音导入完成")
+                .setMessage(
+                    "新增 ${result.imported} 章\n" +
+                        "已有 ${result.alreadyPresent} 章\n" +
+                        "忽略 ${result.ignored} 个无法识别的文件\n" +
+                        "失败 ${result.failedArchives} 个压缩包"
+                )
+                .setPositiveButton("好", null)
+                .show()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -153,14 +181,22 @@ class MainActivity : AppCompatActivity() {
         val moduleBible = findViewById<SwitchMaterial>(R.id.moduleBible)
         val planGroup   = findViewById<RadioGroup>(R.id.planRadioGroup)
         val bibleEnglish = findViewById<SwitchMaterial>(R.id.bibleEnglish)
+        val bibleRecordedAudio = findViewById<SwitchMaterial>(R.id.bibleRecordedAudio)
+        val bibleAudioStatus = findViewById<TextView>(R.id.bibleAudioStatus)
+        val importBibleAudioButton = findViewById<MaterialButton>(R.id.importBibleAudioButton)
         val progressRow = findViewById<LinearLayout>(R.id.bibleProgressRow)
         val readingPreview = findViewById<TextView>(R.id.bibleReadingPreview)
         val speechRateLabel = findViewById<TextView>(R.id.chineseSpeechRateLabel)
         val speechRate = findViewById<SeekBar>(R.id.chineseSpeechRate)
         moduleBible.isChecked = prefs.getBoolean(AlarmService.KEY_MODULE_BIBLE, true)
         bibleEnglish.isChecked = prefs.getBoolean(AlarmService.KEY_BIBLE_ENGLISH, false)
+        bibleRecordedAudio.isChecked =
+            prefs.getBoolean(AlarmService.KEY_BIBLE_RECORDED_AUDIO, true)
         planGroup.visibility  = if (moduleBible.isChecked) View.VISIBLE else View.GONE
         bibleEnglish.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
+        bibleRecordedAudio.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
+        bibleAudioStatus.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
+        importBibleAudioButton.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
         progressRow.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
         readingPreview.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
         speechRateLabel.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
@@ -169,6 +205,9 @@ class MainActivity : AppCompatActivity() {
             prefs.edit().putBoolean(AlarmService.KEY_MODULE_BIBLE, checked).apply()
             planGroup.visibility = if (checked) View.VISIBLE else View.GONE
             bibleEnglish.visibility = if (checked) View.VISIBLE else View.GONE
+            bibleRecordedAudio.visibility = if (checked) View.VISIBLE else View.GONE
+            bibleAudioStatus.visibility = if (checked) View.VISIBLE else View.GONE
+            importBibleAudioButton.visibility = if (checked) View.VISIBLE else View.GONE
             progressRow.visibility = if (checked) View.VISIBLE else View.GONE
             readingPreview.visibility = if (checked) View.VISIBLE else View.GONE
             speechRateLabel.visibility = if (checked) View.VISIBLE else View.GONE
@@ -177,6 +216,13 @@ class MainActivity : AppCompatActivity() {
         bibleEnglish.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean(AlarmService.KEY_BIBLE_ENGLISH, checked).apply()
         }
+        bibleRecordedAudio.setOnCheckedChangeListener { _, checked ->
+            prefs.edit().putBoolean(AlarmService.KEY_BIBLE_RECORDED_AUDIO, checked).apply()
+        }
+        importBibleAudioButton.setOnClickListener {
+            bibleAudioImportLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed"))
+        }
+        updateBibleAudioStatus()
         val savedPlan = prefs.getString(DynamicBibleReadingPlan.KEY, DynamicBibleReadingPlan.ID_MCCHEYNE)
         planGroup.check(when (savedPlan) {
             DynamicBibleReadingPlan.ID_SEQUENTIAL    -> R.id.planSequential
@@ -510,6 +556,17 @@ class MainActivity : AppCompatActivity() {
         val titles = readingPlan.getReadingForDate(today).map { it.toChineseTitle() }
         findViewById<TextView>(R.id.bibleReadingPreview).text =
             titles.mapIndexed { index, title -> "${index + 1}   $title" }.joinToString("\n")
+    }
+
+    private fun updateBibleAudioStatus() {
+        val stats = bibleAudioLibrary.stats()
+        val size = Formatter.formatShortFileSize(this, stats.totalBytes)
+        findViewById<TextView>(R.id.bibleAudioStatus).text =
+            if (stats.chapterCount == 0) {
+                "尚未导入真人录音；播报会使用中文系统语音"
+            } else {
+                "真人录音：${stats.chapterCount} / ${BibleAudioLibrary.TOTAL_BIBLE_CHAPTERS} 章 · $size"
+            }
     }
 
     private fun bindChineseSpeechRate(seekBar: SeekBar, label: TextView) {

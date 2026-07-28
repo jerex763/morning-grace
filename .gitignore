@@ -18,3 +18,8 @@ local.properties
 
 # OS
 .DS_Store
+
+# Local copyrighted Bible recordings (never commit or distribute)
+*.mp3
+bible-audio/
+MorningGrace-Chinese-Bible-Audio.zip

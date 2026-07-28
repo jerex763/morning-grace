@@ -10,6 +10,9 @@ data class BroadcastContent(
 )
 
 data class PassageReading(
+    val book: Int,
+    val chapter: Int,
+    val isWholeChapter: Boolean,
     val titleZh: String,
     val zh: String,
     val en: String
