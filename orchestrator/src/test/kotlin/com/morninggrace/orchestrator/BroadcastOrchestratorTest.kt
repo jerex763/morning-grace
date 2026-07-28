@@ -2,6 +2,7 @@ package com.morninggrace.orchestrator
 
 import com.morninggrace.ai.ConversationManager
 import com.morninggrace.bible.BibleRepository
+import com.morninggrace.bible.audio.BibleAudioPlayer
 import com.morninggrace.bible.model.BibleVerse
 import com.morninggrace.bible.plan.McCheyneOnePlan
 import com.morninggrace.core.model.LocationPrefs
@@ -26,6 +27,9 @@ import java.time.LocalDate
 class BroadcastOrchestratorTest {
 
     private val ttsEngine = mockk<TtsEngine>(relaxed = true)
+    private val bibleAudioPlayer = mockk<BibleAudioPlayer>(relaxed = true) {
+        coEvery { playChapter(any(), any()) } returns false
+    }
     private val bibleRepo = mockk<BibleRepository>()
     private val plan = McCheyneOnePlan()
     private val weatherRepo = mockk<WeatherRepository> {
@@ -47,7 +51,7 @@ class BroadcastOrchestratorTest {
     private val conversationManager = mockk<ConversationManager>(relaxed = true)
 
     private val orchestrator = BroadcastOrchestrator(
-        ttsEngine, bibleRepo, plan, weatherRepo, financeRepo, newsRepo, locationRepo,
+        ttsEngine, bibleAudioPlayer, bibleRepo, plan, weatherRepo, financeRepo, newsRepo, locationRepo,
         speechEngine, conversationManager
     )
 
@@ -99,6 +103,7 @@ class BroadcastOrchestratorTest {
     @Test
     fun `stop transitions state to Idle`() {
         orchestrator.stop()
+        io.mockk.verify(exactly = 1) { bibleAudioPlayer.stop() }
         assertEquals(BroadcastState.Idle, orchestrator.state)
     }
 
@@ -257,5 +262,40 @@ class BroadcastOrchestratorTest {
         orchestrator.broadcast(LocalDate.of(2026, 1, 1))
 
         coVerify(atLeast = 1) { ttsEngine.speak(match { it.contains("起初") }, any()) }
+    }
+
+    @Test
+    fun `recorded chapter replaces Chinese TTS when available`() = runTest {
+        coEvery { bibleRepo.getVersesForPassage(any(), "zh") } returns listOf(
+            BibleVerse(1, 1, 1, "zh", "只应由回退语音朗读")
+        )
+        coEvery { bibleAudioPlayer.playChapter(any(), any()) } returns true
+        every { ttsEngine.isAvailable() } returns true
+
+        orchestrator.broadcast(LocalDate.of(2026, 1, 1))
+
+        coVerify(exactly = 4) { bibleAudioPlayer.playChapter(any(), any()) }
+        coVerify(exactly = 0) {
+            ttsEngine.speak(match { it.contains("只应由回退语音朗读") }, Language.ZH)
+        }
+    }
+
+    @Test
+    fun `recorded audio can be disabled`() = runTest {
+        coEvery { bibleRepo.getVersesForPassage(any(), "zh") } returns listOf(
+            BibleVerse(1, 1, 1, "zh", "使用系统中文语音")
+        )
+        coEvery { bibleAudioPlayer.playChapter(any(), any()) } returns true
+        every { ttsEngine.isAvailable() } returns true
+
+        orchestrator.broadcast(
+            LocalDate.of(2026, 1, 1),
+            BroadcastConfig(preferRecordedBible = false)
+        )
+
+        coVerify(exactly = 0) { bibleAudioPlayer.playChapter(any(), any()) }
+        coVerify(exactly = 4) {
+            ttsEngine.speak("使用系统中文语音", Language.ZH)
+        }
     }
 }

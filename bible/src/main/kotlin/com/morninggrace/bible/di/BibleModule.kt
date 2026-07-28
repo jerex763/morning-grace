@@ -1,6 +1,8 @@
 package com.morninggrace.bible.di
 
 import android.content.Context
+import com.morninggrace.bible.audio.AndroidBibleAudioPlayer
+import com.morninggrace.bible.audio.BibleAudioPlayer
 import com.morninggrace.bible.db.BibleDatabase
 import com.morninggrace.bible.db.BibleVerseDao
 import dagger.Module
@@ -21,4 +23,8 @@ object BibleModule {
 
     @Provides
     fun providesBibleVerseDao(db: BibleDatabase): BibleVerseDao = db.verseDao()
+
+    @Provides
+    @Singleton
+    fun providesBibleAudioPlayer(impl: AndroidBibleAudioPlayer): BibleAudioPlayer = impl
 }

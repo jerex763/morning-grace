@@ -605,6 +605,32 @@
                 android:progress="18" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/bibleRecordedAudio"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="优先使用真人圣经录音"
+                android:textColor="@color/text_label"
+                app:useMaterialThemeColors="true" />
+
+            <TextView
+                android:id="@+id/bibleAudioStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="尚未导入真人录音；播报会使用中文系统语音"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/importBibleAudioButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="导入音频 ZIP（可多选）"
+                app:icon="@android:drawable/ic_menu_upload" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/moduleWeather"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

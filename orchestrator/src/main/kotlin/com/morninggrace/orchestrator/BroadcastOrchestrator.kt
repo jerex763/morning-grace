@@ -3,6 +3,7 @@ package com.morninggrace.orchestrator
 import android.util.Log
 import com.morninggrace.ai.ConversationManager
 import com.morninggrace.bible.BibleRepository
+import com.morninggrace.bible.audio.BibleAudioPlayer
 import com.morninggrace.bible.plan.BibleReadingPlan
 import com.morninggrace.bible.toChineseTitle
 import com.morninggrace.core.model.BroadcastConfig
@@ -25,6 +26,7 @@ private const val TAG = "MorningGrace"
 
 class BroadcastOrchestrator @Inject constructor(
     private val ttsEngine: TtsEngine,
+    private val bibleAudioPlayer: BibleAudioPlayer,
     private val bibleRepo: BibleRepository,
     private val readingPlan: BibleReadingPlan,
     private val weatherRepo: WeatherRepository,
@@ -61,6 +63,7 @@ class BroadcastOrchestrator @Inject constructor(
     }
 
     fun stop() {
+        bibleAudioPlayer.stop()
         ttsEngine.stop()
         state = BroadcastState.Idle
     }
@@ -80,6 +83,9 @@ class BroadcastOrchestrator @Inject constructor(
 
         val readings = passages.map { passage ->
             PassageReading(
+                book = passage.book,
+                chapter = passage.chapter,
+                isWholeChapter = passage.isWholeChapter(),
                 titleZh = passage.toChineseTitle(),
                 zh = bibleRepo.getVersesForPassage(passage, "zh")
                     .joinToString(" ") { it.text }.ifBlank { "今日经文暂不可用" },
@@ -140,7 +146,12 @@ class BroadcastOrchestrator @Inject constructor(
         if (!actuallySkipBible && content.passages.isNotEmpty()) {
             for (passage in content.passages) {
                 safeSpeak("现在读${passage.titleZh}。", Language.ZH)
-                safeSpeak(passage.zh, Language.ZH)
+                val playedRecording = config.preferRecordedBible &&
+                    passage.isWholeChapter &&
+                    safePlayRecordedChapter(passage.book, passage.chapter)
+                if (!playedRecording) {
+                    safeSpeak(passage.zh, Language.ZH)
+                }
                 if (config.includeEnglishBible && passage.en.isNotBlank()) {
                     safeSpeak(passage.en, Language.EN)
                 }
@@ -180,4 +191,12 @@ class BroadcastOrchestrator @Inject constructor(
                 if (e is CancellationException) throw e
             }
     }
+
+    private suspend fun safePlayRecordedChapter(book: Int, chapter: Int): Boolean =
+        runCatching { bibleAudioPlayer.playChapter(book, chapter) }
+            .onFailure { error ->
+                Log.e(TAG, "recorded Bible playback failed for $book:$chapter", error)
+                if (error is CancellationException) throw error
+            }
+            .getOrDefault(false)
 }

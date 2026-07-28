@@ -4,6 +4,7 @@ data class BroadcastConfig(
     val skipWeather:        Boolean = false,
     val skipBible:          Boolean = false,
     val includeEnglishBible: Boolean = false,
+    val preferRecordedBible: Boolean = true,
     val skipFinance:        Boolean = false,
     val skipNews:           Boolean = false
 )
