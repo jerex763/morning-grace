@@ -9,6 +9,8 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.location.Location
+import android.location.Geocoder
+import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -28,9 +30,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.location.LocationManagerCompat
 import androidx.lifecycle.lifecycleScope
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.morninggrace.alarm.AlarmPermissionChecker
@@ -51,9 +52,12 @@ import com.morninggrace.tts.AndroidTtsEngine
 import dagger.hilt.android.AndroidEntryPoint
 import java.time.LocalDate
 import java.time.LocalTime
+import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.async
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
@@ -102,7 +106,8 @@ class MainActivity : AppCompatActivity() {
     ) { permissions ->
         if (permissions.values.any { it }) fetchLocation()
         else {
-            locationStatus.text = "未允许位置，天气将使用上次的位置"
+            locationRepo.useDefault()
+            locationStatus.text = "未允许位置，天气默认使用北京"
             updateLocationStatus()
         }
     }
@@ -366,12 +371,12 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val location = locationRepo.get()
             val weatherJob = async {
-                weatherRepo.getCurrentWeather(location.lat, location.lon)
+                weatherRepo.getCurrentWeather(location)
             }
             val newsJob = async { newsRepo.getTopHeadlines(3) }
 
             weatherJob.await()?.let { weather ->
-                val summary = "${weather.temperatureCelsius.toInt()}°  ${weather.shortDescription()}\n" +
+                val summary = "${weather.locationName}  ${weather.temperatureCelsius.toInt()}°  ${weather.shortDescription()}\n" +
                     "湿度 ${weather.humidity}%"
                 weatherView.text = summary
                 cache.edit().putString("weather", summary).apply()
@@ -394,7 +399,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun WeatherData.shortDescription(): String = when (weatherCode) {
+    private fun WeatherData.shortDescription(): String =
+        descriptionZh.ifBlank { when (weatherCode) {
         0 -> "晴"
         1, 2 -> "少云"
         3 -> "多云"
@@ -405,7 +411,7 @@ class MainActivity : AppCompatActivity() {
         80, 81, 82 -> "阵雨"
         95 -> "雷阵雨"
         else -> "天气变化"
-    }
+    } }
 
     private fun showWheelTimePicker(alarmSwitch: SwitchMaterial) {
         val view = layoutInflater.inflate(R.layout.dialog_time_picker, null)
@@ -655,7 +661,10 @@ class MainActivity : AppCompatActivity() {
     private fun requestLocationOrFetch() {
         val fine = Manifest.permission.ACCESS_FINE_LOCATION
         val coarse = Manifest.permission.ACCESS_COARSE_LOCATION
-        if (ContextCompat.checkSelfPermission(this, fine) == PackageManager.PERMISSION_GRANTED) {
+        val granted =
+            ContextCompat.checkSelfPermission(this, fine) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this, coarse) == PackageManager.PERMISSION_GRANTED
+        if (granted) {
             fetchLocation()
         } else {
             locationPermissionLauncher.launch(arrayOf(fine, coarse))
@@ -677,32 +686,84 @@ class MainActivity : AppCompatActivity() {
 
     private fun fetchLocation() {
         locationStatus.text = "正在获取位置..."
-        val client = LocationServices.getFusedLocationProviderClient(this)
-        try {
-            client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
-                .addOnSuccessListener { location: Location? ->
-                    if (location != null) {
-                        locationRepo.save(location.latitude, location.longitude)
-                        updateLocationStatus()
-                        refreshHomeSummaries()
-                    } else {
-                        client.lastLocation.addOnSuccessListener { last ->
-                            if (last != null) {
-                                locationRepo.save(last.latitude, last.longitude)
-                                updateLocationStatus()
-                                refreshHomeSummaries()
-                            } else {
-                                locationStatus.text = "无法获取位置，请检查 GPS 是否开启"
-                            }
-                        }
-                    }
-                }
-                .addOnFailureListener {
-                    locationStatus.text = "位置获取失败：${it.message}"
-                }
-        } catch (e: SecurityException) {
-            locationStatus.text = "位置权限不足"
+        val manager = getSystemService(LocationManager::class.java)
+        if (!LocationManagerCompat.isLocationEnabled(manager)) {
+            useBeijingFallback("定位服务未开启")
+            return
         }
+        val provider = when {
+            manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) ->
+                LocationManager.NETWORK_PROVIDER
+            manager.isProviderEnabled(LocationManager.GPS_PROVIDER) ->
+                LocationManager.GPS_PROVIDER
+            else -> {
+                useBeijingFallback("没有可用的定位服务")
+                return
+            }
+        }
+        try {
+            LocationManagerCompat.getCurrentLocation(
+                manager,
+                provider,
+                null as android.os.CancellationSignal?,
+                ContextCompat.getMainExecutor(this)
+            ) { current: Location? ->
+                val location = current ?: lastKnownLocation(manager)
+                if (location == null) {
+                    useBeijingFallback("暂时无法取得当前位置")
+                } else {
+                    saveLocatedCity(location)
+                }
+            }
+        } catch (e: SecurityException) {
+            useBeijingFallback("位置权限不足")
+        } catch (e: Exception) {
+            useBeijingFallback("位置获取失败")
+        }
+    }
+
+    @Suppress("MissingPermission")
+    private fun lastKnownLocation(manager: LocationManager): Location? =
+        listOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER)
+            .mapNotNull { provider ->
+                runCatching { manager.getLastKnownLocation(provider) }.getOrNull()
+            }
+            .maxByOrNull { it.time }
+
+    private fun saveLocatedCity(location: Location) {
+        lifecycleScope.launch {
+            val cityName = withContext(Dispatchers.IO) {
+                resolveCityName(location.latitude, location.longitude)
+            }
+            locationRepo.save(
+                location.latitude,
+                location.longitude,
+                cityName ?: "当前位置"
+            )
+            updateLocationStatus()
+            refreshHomeSummaries()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun resolveCityName(lat: Double, lon: Double): String? {
+        if (!Geocoder.isPresent()) return null
+        val address = runCatching {
+            Geocoder(this, Locale.SIMPLIFIED_CHINESE)
+                .getFromLocation(lat, lon, 1)
+                ?.firstOrNull()
+        }.getOrNull() ?: return null
+        if (address.countryCode?.equals("CN", ignoreCase = true) != true) return null
+        return sequenceOf(address.locality, address.subAdminArea, address.adminArea)
+            .filterNotNull()
+            .map { it.trim().removeSuffix("市").removeSuffix("地区") }
+            .firstOrNull { it.isNotBlank() }
+    }
+
+    private fun useBeijingFallback(reason: String) {
+        locationRepo.useDefault()
+        locationStatus.text = "$reason，天气默认使用北京"
+        refreshHomeSummaries()
     }
 
     private fun updateLocationStatus() {
@@ -718,12 +779,12 @@ class MainActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.locationButton).visibility =
             if (granted) View.GONE else View.VISIBLE
         locationStatus.text = if (granted && locationRepo.hasLocation()) {
-            "天气位置会自动更新"
+            "天气位置：${locationRepo.get().cityName}"
         } else if (locationRepo.hasLocation()) {
             val loc = locationRepo.get()
-            "使用上次位置：%.2f, %.2f".format(loc.lat, loc.lon)
+            "使用上次位置：${loc.cityName}"
         } else {
-            "未允许位置，天气暂用悉尼"
+            "未获取位置，天气默认使用北京"
         }
     }
 

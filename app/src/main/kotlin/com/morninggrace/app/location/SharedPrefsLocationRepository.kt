@@ -17,14 +17,24 @@ class SharedPrefsLocationRepository @Inject constructor(
     override fun get(): LocationPrefs {
         return LocationPrefs(
             lat = prefs.getString(KEY_LAT, null)?.toDoubleOrNull() ?: DEFAULT_LAT,
-            lon = prefs.getString(KEY_LON, null)?.toDoubleOrNull() ?: DEFAULT_LON
+            lon = prefs.getString(KEY_LON, null)?.toDoubleOrNull() ?: DEFAULT_LON,
+            cityName = prefs.getString(KEY_CITY, null) ?: DEFAULT_CITY
         )
     }
 
-    override fun save(lat: Double, lon: Double) {
+    override fun save(lat: Double, lon: Double, cityName: String) {
         prefs.edit()
             .putString(KEY_LAT, lat.toString())
             .putString(KEY_LON, lon.toString())
+            .putString(KEY_CITY, cityName)
+            .apply()
+    }
+
+    override fun useDefault() {
+        prefs.edit()
+            .remove(KEY_LAT)
+            .remove(KEY_LON)
+            .remove(KEY_CITY)
             .apply()
     }
 
@@ -35,7 +45,9 @@ class SharedPrefsLocationRepository @Inject constructor(
         private const val PREFS_NAME = "alarm_prefs"
         private const val KEY_LAT = "location_lat"
         private const val KEY_LON = "location_lon"
-        private const val DEFAULT_LAT = -33.87   // Sydney fallback
-        private const val DEFAULT_LON = 151.21
+        private const val KEY_CITY = "location_city"
+        private const val DEFAULT_LAT = 39.9042
+        private const val DEFAULT_LON = 116.4074
+        private const val DEFAULT_CITY = "北京"
     }
 }

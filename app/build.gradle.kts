@@ -43,5 +43,4 @@ dependencies {
     implementation(libs.material)
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
-    implementation(libs.play.services.location)
 }

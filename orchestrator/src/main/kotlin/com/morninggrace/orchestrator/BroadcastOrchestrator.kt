@@ -77,7 +77,7 @@ class BroadcastOrchestrator @Inject constructor(
     ): BroadcastContent = coroutineScope {
         val location = locationRepo.get()
         val weatherJob = if (!config.skipWeather) {
-            async { weatherRepo.getCurrentWeather(location.lat, location.lon) }
+            async { weatherRepo.getCurrentWeather(location) }
         } else {
             null
         }

@@ -73,7 +73,7 @@ class AlarmService : Service() {
         val prefs = getSharedPreferences(AlarmReceiver.PREFS, MODE_PRIVATE)
         val weatherEnabled = prefs.getBoolean(KEY_MODULE_WEATHER, true)
         val newsEnabled = prefs.getBoolean(KEY_MODULE_NEWS, true)
-        val offline = !hasValidatedInternet() && (weatherEnabled || newsEnabled)
+        val offline = !hasInternetNetwork() && (weatherEnabled || newsEnabled)
         val config = BroadcastConfig(
             skipWeather = !weatherEnabled,
             skipBible = !prefs.getBoolean(KEY_MODULE_BIBLE, true),
@@ -97,12 +97,11 @@ class AlarmService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun hasValidatedInternet(): Boolean {
+    private fun hasInternetNetwork(): Boolean {
         val connectivity = getSystemService(ConnectivityManager::class.java)
         val network = connectivity.activeNetwork ?: return false
         val capabilities = connectivity.getNetworkCapabilities(network) ?: return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     override fun onDestroy() {

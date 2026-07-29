@@ -38,7 +38,7 @@ class BroadcastOrchestratorTest {
         coEvery { getVersesForPassage(any(), "en") } returns emptyList()
     }
     private val weatherRepo = mockk<WeatherRepository> {
-        coEvery { getCurrentWeather(any(), any()) } returns null
+        coEvery { getCurrentWeather(any()) } returns null
     }
     private val newsRepo = mockk<NewsRepository> {
         coEvery { getTopHeadlines(any(), any()) } returns emptyList()
@@ -136,7 +136,7 @@ class BroadcastOrchestratorTest {
             BroadcastConfig(offline = true)
         )
 
-        coVerify(exactly = 0) { weatherRepo.getCurrentWeather(any(), any()) }
+        coVerify(exactly = 0) { weatherRepo.getCurrentWeather(any()) }
         coVerify(exactly = 0) { newsRepo.getTopHeadlines(any(), any()) }
         coVerify {
             ttsEngine.speak("当前没有网络，今天跳过天气和新闻。", Language.ZH)
