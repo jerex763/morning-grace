@@ -89,7 +89,11 @@ class MainActivity : AppCompatActivity() {
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* silent */ }
+    ) {
+        // Android only presents one runtime-permission dialog at a time.
+        // Start location onboarding after the notification decision completes.
+        refreshLocationAutomatically()
+    }
 
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -130,7 +134,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         prefs = getSharedPreferences("alarm_prefs", MODE_PRIVATE)
-        requestNotificationPermissionIfNeeded()
+        val waitingForNotificationPermission = requestNotificationPermissionIfNeeded()
 
         val alarmSwitch = findViewById<SwitchMaterial>(R.id.alarmSwitch)
         val warning = findViewById<TextView>(R.id.permissionWarning)
@@ -147,7 +151,9 @@ class MainActivity : AppCompatActivity() {
         alarmSwitch.isChecked = prefs.getBoolean("enabled", false)
         updateTimeDisplay()
         updateLocationStatus()
-        refreshLocationAutomatically()
+        if (!waitingForNotificationPermission) {
+            refreshLocationAutomatically()
+        }
         bindSettingsPanel()
         refreshHomeSummaries()
         if (alarmSwitch.isChecked && permissionChecker.canScheduleExactAlarms()) {
@@ -697,13 +703,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun requestNotificationPermissionIfNeeded() {
+    private fun requestNotificationPermissionIfNeeded(): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED
             ) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                return true
             }
         }
+        return false
     }
 }
