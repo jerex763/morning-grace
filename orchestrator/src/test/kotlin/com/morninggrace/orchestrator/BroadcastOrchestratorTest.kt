@@ -127,6 +127,26 @@ class BroadcastOrchestratorTest {
     }
 
     @Test
+    fun `offline broadcast skips network repositories and continues to recorded Bible`() = runTest {
+        coEvery { bibleAudioPlayer.playChapter(any(), any()) } returns true
+
+        orchestrator.broadcast(
+            LocalDate.of(2026, 1, 1),
+            BroadcastConfig(offline = true)
+        )
+
+        coVerify(exactly = 0) { weatherRepo.getCurrentWeather(any(), any()) }
+        coVerify(exactly = 0) { newsRepo.getTopHeadlines(any(), any()) }
+        coVerify {
+            ttsEngine.speak("当前没有网络，今天跳过天气和新闻。", Language.ZH)
+        }
+        coVerify(exactly = 4) { bibleAudioPlayer.playChapter(any(), any()) }
+        coVerify(exactly = 0) {
+            ttsEngine.speak("今日新闻暂时无法获取。", Language.ZH)
+        }
+    }
+
+    @Test
     fun `long content is split below TTS limit at punctuation`() {
         val text = buildString {
             repeat(1_500) { append("这是一句话。") }

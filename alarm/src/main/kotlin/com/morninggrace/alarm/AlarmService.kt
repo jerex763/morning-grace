@@ -7,6 +7,8 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.IBinder
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
@@ -69,13 +71,17 @@ class AlarmService : Service() {
         publishPlaybackState(true)
 
         val prefs = getSharedPreferences(AlarmReceiver.PREFS, MODE_PRIVATE)
+        val weatherEnabled = prefs.getBoolean(KEY_MODULE_WEATHER, true)
+        val newsEnabled = prefs.getBoolean(KEY_MODULE_NEWS, true)
+        val offline = !hasValidatedInternet() && (weatherEnabled || newsEnabled)
         val config = BroadcastConfig(
-            skipWeather = !prefs.getBoolean(KEY_MODULE_WEATHER, true),
+            skipWeather = !weatherEnabled,
             skipBible = !prefs.getBoolean(KEY_MODULE_BIBLE, true),
             includeEnglishBible = false,
             preferRecordedBible = prefs.getBoolean(KEY_BIBLE_RECORDED_AUDIO, true),
-            skipNews = !prefs.getBoolean(KEY_MODULE_NEWS, true),
-            newsFullArticles = prefs.getBoolean(KEY_NEWS_FULL_ARTICLES, false)
+            skipNews = !newsEnabled,
+            newsFullArticles = prefs.getBoolean(KEY_NEWS_FULL_ARTICLES, false),
+            offline = offline
         )
 
         broadcastJob = serviceScope.launch {
@@ -89,6 +95,14 @@ class AlarmService : Service() {
             }
         }
         return START_NOT_STICKY
+    }
+
+    private fun hasValidatedInternet(): Boolean {
+        val connectivity = getSystemService(ConnectivityManager::class.java)
+        val network = connectivity.activeNetwork ?: return false
+        val capabilities = connectivity.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
     override fun onDestroy() {

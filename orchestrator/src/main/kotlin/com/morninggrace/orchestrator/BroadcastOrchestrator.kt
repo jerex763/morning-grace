@@ -38,6 +38,11 @@ class BroadcastOrchestrator @Inject constructor(
         date: LocalDate = LocalDate.now(),
         config: BroadcastConfig = BroadcastConfig()
     ) {
+        val effectiveConfig = if (config.offline) {
+            config.copy(skipWeather = true, skipNews = true)
+        } else {
+            config
+        }
         var waited = 0
         while (!ttsEngine.isAvailable() && waited < 30) {
             delay(100)
@@ -45,9 +50,9 @@ class BroadcastOrchestrator @Inject constructor(
         }
         state = BroadcastState.Preparing
         try {
-            val content = prepare(date, config)
+            val content = prepare(date, effectiveConfig)
             state = BroadcastState.Broadcasting(content)
-            deliver(content, config)
+            deliver(content, effectiveConfig)
         } catch (error: Exception) {
             Log.e(TAG, "broadcast() failed", error)
             throw error
@@ -126,6 +131,10 @@ class BroadcastOrchestrator @Inject constructor(
 
     private suspend fun deliver(content: BroadcastContent, config: BroadcastConfig) {
         safeSpeak(content.greeting, Language.ZH)
+
+        if (config.offline) {
+            safeSpeak("当前没有网络，今天跳过天气和新闻。", Language.ZH)
+        }
 
         if (!config.skipWeather) {
             safeSpeak(content.weather, Language.ZH)
