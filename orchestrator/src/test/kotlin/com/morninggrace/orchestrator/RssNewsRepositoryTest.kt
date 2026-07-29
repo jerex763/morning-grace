@@ -3,6 +3,8 @@ package com.morninggrace.orchestrator
 import com.morninggrace.orchestrator.news.RssNewsRepository
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RssNewsRepositoryTest {
@@ -27,6 +29,31 @@ class RssNewsRepositoryTest {
         assertEquals(
             "第一段新闻正文。\n第二段包含 重点 。",
             repository.extractArticleText(html)
+        )
+    }
+
+    @Test
+    fun `summary mode rejects feed items without an official summary`() {
+        assertFalse(
+            repository.shouldIncludeItem(
+                title = "没有概述的图片新闻",
+                summary = "",
+                requireSummary = true
+            )
+        )
+        assertTrue(
+            repository.shouldIncludeItem(
+                title = "有概述的新闻",
+                summary = "官方概述。",
+                requireSummary = true
+            )
+        )
+        assertTrue(
+            repository.shouldIncludeItem(
+                title = "全文模式新闻",
+                summary = "",
+                requireSummary = false
+            )
         )
     }
 }

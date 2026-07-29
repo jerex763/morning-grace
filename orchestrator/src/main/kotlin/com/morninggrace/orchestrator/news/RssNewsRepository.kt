@@ -29,7 +29,11 @@ class RssNewsRepository @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 val feed = get(feedUrl) ?: return@withContext emptyList()
-                val items = parseFeed(feed, count)
+                val items = parseFeed(
+                    xml = feed,
+                    count = count,
+                    requireSummary = !includeFullContent
+                )
                 if (!includeFullContent) return@withContext items
                 coroutineScope {
                     items.map { item ->
@@ -60,7 +64,11 @@ class RssNewsRepository @Inject constructor(
             if (!response.isSuccessful) null else response.body?.string()
         }
 
-    private fun parseFeed(xml: String, count: Int): List<NewsHeadline> {
+    private fun parseFeed(
+        xml: String,
+        count: Int,
+        requireSummary: Boolean
+    ): List<NewsHeadline> {
         val parser = Xml.newPullParser()
         parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
         parser.setInput(StringReader(xml))
@@ -87,7 +95,7 @@ class RssNewsRepository @Inject constructor(
                     }
                 }
                 XmlPullParser.END_TAG -> if (parser.name == "item") {
-                    if (title.isNotBlank()) {
+                    if (shouldIncludeItem(title, description, requireSummary)) {
                         items += NewsHeadline(
                             title = title,
                             summary = description,
@@ -101,6 +109,12 @@ class RssNewsRepository @Inject constructor(
         }
         return items
     }
+
+    internal fun shouldIncludeItem(
+        title: String,
+        summary: String,
+        requireSummary: Boolean
+    ): Boolean = title.isNotBlank() && (!requireSummary || summary.isNotBlank())
 
     internal fun extractArticleText(html: String): String {
         val body = Regex(

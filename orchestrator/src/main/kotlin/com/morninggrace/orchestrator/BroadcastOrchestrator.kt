@@ -163,8 +163,10 @@ class BroadcastOrchestrator @Inject constructor(
                     },
                     Language.ZH
                 )
+                val ordinalNames = arrayOf("第一条", "第二条", "第三条")
                 content.news.forEachIndexed { index, item ->
-                    safeSpeak("第${index + 1}条，${item.title}。", Language.ZH)
+                    val ordinal = ordinalNames.getOrElse(index) { "下一条" }
+                    safeSpeak("$ordinal，${item.title}。", Language.ZH)
                     safeSpeakLong(item.content, Language.ZH)
                 }
             }

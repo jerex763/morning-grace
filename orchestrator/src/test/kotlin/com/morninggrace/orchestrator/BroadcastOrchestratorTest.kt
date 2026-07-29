@@ -87,6 +87,9 @@ class BroadcastOrchestratorTest {
             coVerify { ttsEngine.speak("概述$index", Language.ZH) }
             coVerify(exactly = 0) { ttsEngine.speak("全文$index", Language.ZH) }
         }
+        coVerify { ttsEngine.speak("第一条，标题1。", Language.ZH) }
+        coVerify { ttsEngine.speak("第二条，标题2。", Language.ZH) }
+        coVerify { ttsEngine.speak("第三条，标题3。", Language.ZH) }
     }
 
     @Test
