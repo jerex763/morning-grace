@@ -5,5 +5,6 @@ data class BroadcastConfig(
     val skipBible:          Boolean = false,
     val includeEnglishBible: Boolean = false,
     val preferRecordedBible: Boolean = true,
-    val skipNews:           Boolean = false
+    val skipNews:           Boolean = false,
+    val newsFullArticles:   Boolean = false
 )

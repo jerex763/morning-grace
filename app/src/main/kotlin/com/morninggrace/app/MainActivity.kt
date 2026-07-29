@@ -188,6 +188,7 @@ class MainActivity : AppCompatActivity() {
         // Module toggles
         bindModuleCheckbox(R.id.moduleWeather, AlarmService.KEY_MODULE_WEATHER)
         bindModuleCheckbox(R.id.moduleNews,    AlarmService.KEY_MODULE_NEWS)
+        bindModuleCheckbox(R.id.newsFullArticles, AlarmService.KEY_NEWS_FULL_ARTICLES, false)
 
         // Bible checkbox + reading plan (plan visible only when Bible is enabled)
         val moduleBible = findViewById<SwitchMaterial>(R.id.moduleBible)
@@ -325,9 +326,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun bindModuleCheckbox(viewId: Int, prefKey: String) {
+    private fun bindModuleCheckbox(viewId: Int, prefKey: String, defaultValue: Boolean = true) {
         val checkbox = findViewById<SwitchMaterial>(viewId)
-        checkbox.isChecked = prefs.getBoolean(prefKey, true)
+        checkbox.isChecked = prefs.getBoolean(prefKey, defaultValue)
         checkbox.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean(prefKey, checked).apply()
         }

@@ -492,6 +492,16 @@
                 android:textSize="20sp"
                 app:useMaterialThemeColors="true" />
 
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/newsFullArticles"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:checked="false"
+                android:text="播报新闻全文（时间较长）"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                app:useMaterialThemeColors="true" />
+
             <TextView
                 android:id="@+id/locationStatus"
                 android:layout_width="match_parent"

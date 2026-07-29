@@ -22,11 +22,15 @@ class RssNewsRepository @Inject constructor(
 
     private val feedUrl = "https://www.chinanews.com.cn/rss/scroll-news.xml"
 
-    override suspend fun getTopHeadlines(count: Int): List<NewsHeadline> =
+    override suspend fun getTopHeadlines(
+        count: Int,
+        includeFullContent: Boolean
+    ): List<NewsHeadline> =
         withContext(Dispatchers.IO) {
             try {
                 val feed = get(feedUrl) ?: return@withContext emptyList()
                 val items = parseFeed(feed, count)
+                if (!includeFullContent) return@withContext items
                 coroutineScope {
                     items.map { item ->
                         async {
@@ -35,7 +39,7 @@ class RssNewsRepository @Inject constructor(
                                 ?.let { get(it) }
                                 ?.let(::extractArticleText)
                                 .orEmpty()
-                            item.copy(content = article.ifBlank { item.content })
+                            item.copy(fullContent = article)
                         }
                     }.awaitAll()
                 }
@@ -86,7 +90,7 @@ class RssNewsRepository @Inject constructor(
                     if (title.isNotBlank()) {
                         items += NewsHeadline(
                             title = title,
-                            content = description,
+                            summary = description,
                             articleUrl = link
                         )
                     }
@@ -118,6 +122,7 @@ class RssNewsRepository @Inject constructor(
         value
             .replace(Regex("<script.*?</script>", RegexOption.DOT_MATCHES_ALL), " ")
             .replace(Regex("<style.*?</style>", RegexOption.DOT_MATCHES_ALL), " ")
+            .replace(Regex("<!--.*?-->", RegexOption.DOT_MATCHES_ALL), " ")
             .replace(Regex("<[^>]+>"), " ")
             .replace("&nbsp;", " ")
             .replace("&amp;", "&")

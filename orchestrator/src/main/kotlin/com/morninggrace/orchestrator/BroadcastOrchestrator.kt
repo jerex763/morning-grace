@@ -73,7 +73,7 @@ class BroadcastOrchestrator @Inject constructor(
             null
         }
         val newsJob = if (!config.skipNews) {
-            async { newsRepo.getTopHeadlines(3) }
+            async { newsRepo.getTopHeadlines(3, config.newsFullArticles) }
         } else {
             null
         }
@@ -107,7 +107,11 @@ class BroadcastOrchestrator @Inject constructor(
         val news = newsJob?.await().orEmpty().map {
             NewsReading(
                 title = it.title,
-                content = it.content.ifBlank { "暂时无法取得这条新闻的正文。" }
+                content = if (config.newsFullArticles) {
+                    it.fullContent.ifBlank { it.summary }
+                } else {
+                    it.summary
+                }.ifBlank { "暂时无法取得这条新闻的概述。" }
             )
         }
 
@@ -151,7 +155,14 @@ class BroadcastOrchestrator @Inject constructor(
             if (content.news.isEmpty()) {
                 safeSpeak("今日新闻暂时无法获取。", Language.ZH)
             } else {
-                safeSpeak("下面播报今日三条要闻。", Language.ZH)
+                safeSpeak(
+                    if (config.newsFullArticles) {
+                        "下面播报今日三条要闻全文。"
+                    } else {
+                        "下面播报今日三条要闻概述。"
+                    },
+                    Language.ZH
+                )
                 content.news.forEachIndexed { index, item ->
                     safeSpeak("第${index + 1}条，${item.title}。", Language.ZH)
                     safeSpeakLong(item.content, Language.ZH)

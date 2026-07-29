@@ -40,7 +40,7 @@ class BroadcastOrchestratorTest {
         coEvery { getCurrentWeather(any(), any()) } returns null
     }
     private val newsRepo = mockk<NewsRepository> {
-        coEvery { getTopHeadlines(any()) } returns emptyList()
+        coEvery { getTopHeadlines(any(), any()) } returns emptyList()
     }
     private val locationRepo = mockk<LocationRepository> {
         every { get() } returns LocationPrefs(-33.87, 151.21)
@@ -72,9 +72,9 @@ class BroadcastOrchestratorTest {
     }
 
     @Test
-    fun `three news articles speak titles and full content`() = runTest {
-        coEvery { newsRepo.getTopHeadlines(3) } returns (1..3).map {
-            NewsHeadline("标题$it", "正文$it")
+    fun `three news items speak official summaries by default`() = runTest {
+        coEvery { newsRepo.getTopHeadlines(3, false) } returns (1..3).map {
+            NewsHeadline(title = "标题$it", summary = "概述$it", fullContent = "全文$it")
         }
 
         orchestrator.broadcast(
@@ -84,8 +84,28 @@ class BroadcastOrchestratorTest {
 
         (1..3).forEach { index ->
             coVerify { ttsEngine.speak(match { it.contains("标题$index") }, Language.ZH) }
-            coVerify { ttsEngine.speak("正文$index", Language.ZH) }
+            coVerify { ttsEngine.speak("概述$index", Language.ZH) }
+            coVerify(exactly = 0) { ttsEngine.speak("全文$index", Language.ZH) }
         }
+    }
+
+    @Test
+    fun `full news mode speaks article content`() = runTest {
+        coEvery { newsRepo.getTopHeadlines(3, true) } returns listOf(
+            NewsHeadline(title = "标题", summary = "概述", fullContent = "完整正文")
+        )
+
+        orchestrator.broadcast(
+            LocalDate.of(2026, 1, 1),
+            BroadcastConfig(
+                skipWeather = true,
+                skipBible = true,
+                newsFullArticles = true
+            )
+        )
+
+        coVerify { ttsEngine.speak("完整正文", Language.ZH) }
+        coVerify(exactly = 0) { ttsEngine.speak("概述", Language.ZH) }
     }
 
     @Test

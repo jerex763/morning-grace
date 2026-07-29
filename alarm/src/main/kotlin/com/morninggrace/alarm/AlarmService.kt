@@ -39,6 +39,7 @@ class AlarmService : Service() {
         const val KEY_BIBLE_ENGLISH = "bible_english"
         const val KEY_BIBLE_RECORDED_AUDIO = "bible_recorded_audio"
         const val KEY_MODULE_NEWS = "module_news"
+        const val KEY_NEWS_FULL_ARTICLES = "news_full_articles"
     }
 
     @Inject lateinit var morningSession: MorningSession
@@ -73,7 +74,8 @@ class AlarmService : Service() {
             skipBible = !prefs.getBoolean(KEY_MODULE_BIBLE, true),
             includeEnglishBible = false,
             preferRecordedBible = prefs.getBoolean(KEY_BIBLE_RECORDED_AUDIO, true),
-            skipNews = !prefs.getBoolean(KEY_MODULE_NEWS, true)
+            skipNews = !prefs.getBoolean(KEY_MODULE_NEWS, true),
+            newsFullArticles = prefs.getBoolean(KEY_NEWS_FULL_ARTICLES, false)
         )
 
         broadcastJob = serviceScope.launch {
