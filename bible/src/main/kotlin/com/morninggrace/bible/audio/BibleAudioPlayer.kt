@@ -55,7 +55,10 @@ class AndroidBibleAudioPlayer @Inject constructor(
                         .build()
                 )
                 player.setDataSource(file.absolutePath)
-                player.setOnPreparedListener { it.start() }
+                player.setOnPreparedListener {
+                    it.setVolume(1.0f, 1.0f)
+                    it.start()
+                }
                 player.setOnCompletionListener { finish(true) }
                 player.setOnErrorListener { _, _, _ ->
                     finish(false)

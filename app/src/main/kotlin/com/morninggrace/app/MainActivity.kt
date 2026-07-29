@@ -1,9 +1,13 @@
 package com.morninggrace.app
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.location.Location
 import android.net.ConnectivityManager
 import android.net.Network
@@ -72,6 +76,16 @@ class MainActivity : AppCompatActivity() {
 
     private var selectedHour = 6
     private var selectedMinute = 0
+    private var isBroadcastPlaying = false
+    private var playbackReceiverRegistered = false
+
+    private val playbackStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            updatePlaybackButton(
+                intent?.getBooleanExtra(AlarmService.EXTRA_IS_PLAYING, false) == true
+            )
+        }
+    }
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -81,7 +95,10 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         if (permissions.values.any { it }) fetchLocation()
-        else locationStatus.text = "位置权限被拒绝"
+        else {
+            locationStatus.text = "未允许位置，天气将使用上次的位置"
+            updateLocationStatus()
+        }
     }
 
     private val bibleAudioImportLauncher = registerForActivityResult(
@@ -130,6 +147,7 @@ class MainActivity : AppCompatActivity() {
         alarmSwitch.isChecked = prefs.getBoolean("enabled", false)
         updateTimeDisplay()
         updateLocationStatus()
+        refreshLocationAutomatically()
         bindSettingsPanel()
         refreshHomeSummaries()
         if (alarmSwitch.isChecked && permissionChecker.canScheduleExactAlarms()) {
@@ -235,12 +253,26 @@ class MainActivity : AppCompatActivity() {
 
         // Dev: test broadcast (uses current module prefs)
         findViewById<MaterialButton>(R.id.testBroadcastButton).setOnClickListener {
-            ContextCompat.startForegroundService(this, Intent(this, AlarmService::class.java))
+            if (isBroadcastPlaying) {
+                startService(
+                    Intent(this, AlarmService::class.java).setAction(AlarmService.ACTION_STOP)
+                )
+            } else {
+                ContextCompat.startForegroundService(this, Intent(this, AlarmService::class.java))
+            }
         }
+        updatePlaybackButton(prefs.getBoolean(AlarmService.KEY_PLAYBACK_ACTIVE, false))
     }
 
     override fun onStart() {
         super.onStart()
+        ContextCompat.registerReceiver(
+            this,
+            playbackStateReceiver,
+            IntentFilter(AlarmService.ACTION_PLAYBACK_STATE),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        playbackReceiverRegistered = true
         val cm = getSystemService(ConnectivityManager::class.java)
         val req = NetworkRequest.Builder()
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -255,6 +287,10 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(networkCallback)
+        if (playbackReceiverRegistered) {
+            unregisterReceiver(playbackStateReceiver)
+            playbackReceiverRegistered = false
+        }
     }
 
     override fun onResume() {
@@ -264,6 +300,23 @@ class MainActivity : AppCompatActivity() {
         }
         updateLocationStatus()
         updateBibleProgress()
+        updatePlaybackButton(prefs.getBoolean(AlarmService.KEY_PLAYBACK_ACTIVE, false))
+    }
+
+    private fun updatePlaybackButton(playing: Boolean) {
+        isBroadcastPlaying = playing
+        val button = findViewById<MaterialButton>(R.id.testBroadcastButton)
+        if (playing) {
+            button.text = "■  停止播放"
+            button.contentDescription = "停止晨间播报"
+            button.backgroundTintList =
+                ColorStateList.valueOf(ContextCompat.getColor(this, R.color.warning))
+        } else {
+            button.text = "▶  开始今天的播报"
+            button.contentDescription = "开始今天的晨间播报"
+            button.backgroundTintList =
+                ColorStateList.valueOf(ContextCompat.getColor(this, R.color.accent_dark))
+        }
     }
 
     private fun bindModuleCheckbox(viewId: Int, prefKey: String) {
@@ -579,6 +632,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun refreshLocationAutomatically() {
+        val fine = Manifest.permission.ACCESS_FINE_LOCATION
+        val coarse = Manifest.permission.ACCESS_COARSE_LOCATION
+        val granted =
+            ContextCompat.checkSelfPermission(this, fine) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this, coarse) == PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            fetchLocation()
+        } else {
+            locationPermissionLauncher.launch(arrayOf(fine, coarse))
+        }
+    }
+
     private fun fetchLocation() {
         locationStatus.text = "正在获取位置..."
         val client = LocationServices.getFusedLocationProviderClient(this)
@@ -610,11 +676,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateLocationStatus() {
-        locationStatus.text = if (locationRepo.hasLocation()) {
+        val fine = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val coarse = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val granted = fine || coarse
+        findViewById<MaterialButton>(R.id.locationButton).visibility =
+            if (granted) View.GONE else View.VISIBLE
+        locationStatus.text = if (granted && locationRepo.hasLocation()) {
+            "天气位置会自动更新"
+        } else if (locationRepo.hasLocation()) {
             val loc = locationRepo.get()
-            "📍 %.4f, %.4f".format(loc.lat, loc.lon)
+            "使用上次位置：%.2f, %.2f".format(loc.lat, loc.lon)
         } else {
-            "未设置（默认：悉尼）"
+            "未允许位置，天气暂用悉尼"
         }
     }
 

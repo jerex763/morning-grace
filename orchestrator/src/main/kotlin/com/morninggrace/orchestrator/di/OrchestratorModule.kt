@@ -5,10 +5,8 @@ import com.morninggrace.bible.plan.ChapterADayPlan
 import com.morninggrace.bible.plan.McCheyneOnePlan
 import com.morninggrace.bible.plan.SequentialPlan
 import com.morninggrace.orchestrator.DynamicBibleReadingPlan
-import com.morninggrace.core.repository.FinanceRepository
 import com.morninggrace.core.repository.NewsRepository
 import com.morninggrace.core.repository.WeatherRepository
-import com.morninggrace.orchestrator.finance.YahooFinanceRepository
 import com.morninggrace.orchestrator.news.RssNewsRepository
 import com.morninggrace.orchestrator.weather.OpenMeteoWeatherRepository
 import dagger.Binds
@@ -29,9 +27,6 @@ abstract class OrchestratorModule {
 
     @Binds @Singleton
     abstract fun bindsWeatherRepository(impl: OpenMeteoWeatherRepository): WeatherRepository
-
-    @Binds @Singleton
-    abstract fun bindsFinanceRepository(impl: YahooFinanceRepository): FinanceRepository
 
     @Binds @Singleton
     abstract fun bindsNewsRepository(impl: RssNewsRepository): NewsRepository

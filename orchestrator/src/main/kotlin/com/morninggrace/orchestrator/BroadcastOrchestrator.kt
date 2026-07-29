@@ -1,19 +1,15 @@
 package com.morninggrace.orchestrator
 
 import android.util.Log
-import com.morninggrace.ai.ConversationManager
 import com.morninggrace.bible.BibleRepository
 import com.morninggrace.bible.audio.BibleAudioPlayer
 import com.morninggrace.bible.plan.BibleReadingPlan
 import com.morninggrace.bible.toChineseTitle
 import com.morninggrace.core.model.BroadcastConfig
-import com.morninggrace.core.model.ConfirmationResult
 import com.morninggrace.core.model.Language
-import com.morninggrace.core.repository.FinanceRepository
 import com.morninggrace.core.repository.LocationRepository
 import com.morninggrace.core.repository.NewsRepository
 import com.morninggrace.core.repository.WeatherRepository
-import com.morninggrace.tts.SpeechEngine
 import com.morninggrace.tts.TtsEngine
 import java.time.LocalDate
 import javax.inject.Inject
@@ -23,6 +19,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 
 private const val TAG = "MorningGrace"
+private const val MAX_TTS_CHUNK = 2_800
 
 class BroadcastOrchestrator @Inject constructor(
     private val ttsEngine: TtsEngine,
@@ -30,33 +27,30 @@ class BroadcastOrchestrator @Inject constructor(
     private val bibleRepo: BibleRepository,
     private val readingPlan: BibleReadingPlan,
     private val weatherRepo: WeatherRepository,
-    private val financeRepo: FinanceRepository,
     private val newsRepo: NewsRepository,
-    private val locationRepo: LocationRepository,
-    private val speechEngine: SpeechEngine,
-    private val conversationManager: ConversationManager
+    private val locationRepo: LocationRepository
 ) {
 
     var state: BroadcastState = BroadcastState.Idle
         private set
 
-    suspend fun broadcast(date: LocalDate = LocalDate.now(), config: BroadcastConfig = BroadcastConfig()) {
+    suspend fun broadcast(
+        date: LocalDate = LocalDate.now(),
+        config: BroadcastConfig = BroadcastConfig()
+    ) {
         var waited = 0
-        while (!ttsEngine.isAvailable() && waited < 30) { delay(100); waited++ }
-        Log.d(TAG, "broadcast() started, ttsAvailable=${ttsEngine.isAvailable()}, waited=${waited * 100}ms")
+        while (!ttsEngine.isAvailable() && waited < 30) {
+            delay(100)
+            waited++
+        }
         state = BroadcastState.Preparing
         try {
             val content = prepare(date, config)
             state = BroadcastState.Broadcasting(content)
-
-            Log.d(TAG, "deliver() starting")
             deliver(content, config)
-            Log.d(TAG, "deliver() done")
-
-            conversationManager.startConversation(buildSystemPrompt(content))
-        } catch (e: Exception) {
-            Log.e(TAG, "broadcast() failed", e)
-            throw e
+        } catch (error: Exception) {
+            Log.e(TAG, "broadcast() failed", error)
+            throw error
         } finally {
             state = BroadcastState.Idle
         }
@@ -68,19 +62,27 @@ class BroadcastOrchestrator @Inject constructor(
         state = BroadcastState.Idle
     }
 
-    private suspend fun prepare(date: LocalDate, config: BroadcastConfig): BroadcastContent = coroutineScope {
+    private suspend fun prepare(
+        date: LocalDate,
+        config: BroadcastConfig
+    ): BroadcastContent = coroutineScope {
         val location = locationRepo.get()
-        // Only fetch modules that are enabled — skipped modules make no network calls.
-        val weatherJob = if (!config.skipWeather) async { weatherRepo.getCurrentWeather(location.lat, location.lon) } else null
-        val financeJob = if (!config.skipFinance) async { financeRepo.getMarketData() } else null
-        val newsJob    = if (!config.skipNews)    async { newsRepo.getTopHeadlines(3) } else null
+        val weatherJob = if (!config.skipWeather) {
+            async { weatherRepo.getCurrentWeather(location.lat, location.lon) }
+        } else {
+            null
+        }
+        val newsJob = if (!config.skipNews) {
+            async { newsRepo.getTopHeadlines(3) }
+        } else {
+            null
+        }
 
-        Log.d(TAG, "prepare() loading bible plan for $date")
-        val passages = if (!config.skipBible) readingPlan.getReadingForDate(date) else emptyList()
-        Log.d(TAG, "prepare() bible passages: $passages (skipBible=${config.skipBible})")
-
-        val passageName = passages.joinToString("、") { it.toChineseTitle() }
-
+        val passages = if (!config.skipBible) {
+            readingPlan.getReadingForDate(date)
+        } else {
+            emptyList()
+        }
         val readings = passages.map { passage ->
             PassageReading(
                 book = passage.book,
@@ -88,107 +90,112 @@ class BroadcastOrchestrator @Inject constructor(
                 isWholeChapter = passage.isWholeChapter(),
                 titleZh = passage.toChineseTitle(),
                 zh = bibleRepo.getVersesForPassage(passage, "zh")
-                    .joinToString(" ") { it.text }.ifBlank { "今日经文暂不可用" },
+                    .joinToString(" ") { it.text }
+                    .ifBlank { "今日经文暂不可用" },
                 en = if (config.includeEnglishBible) {
                     bibleRepo.getVersesForPassage(passage, "en")
-                        .joinToString(" ") { it.text }.ifBlank { "Bible reading unavailable" }
+                        .joinToString(" ") { it.text }
+                        .ifBlank { "Bible reading unavailable" }
                 } else {
                     ""
                 }
             )
         }
-        Log.d(TAG, "prepare() bible done (${readings.size} passages)")
 
-        val weather = if (weatherJob != null) weatherJob.await()?.toSpeechZh() ?: "天气暂时无法获取" else ""
-
-        val marketSummary = if (financeJob != null) {
-            val marketList = financeJob.await()
-            if (marketList.isEmpty()) "市场数据暂时无法获取"
-            else marketList.joinToString("；") { it.toSpeechZh() }
-        } else ""
-
-        val newsSummary = if (newsJob != null) {
-            val newsList = newsJob.await()
-            if (newsList.isEmpty()) "新闻暂时无法获取"
-            else newsList.joinToString("。") { it.title }
-        } else ""
-
-        Log.d(TAG, "prepare() weather=$weather")
-        Log.d(TAG, "prepare() market=$marketSummary")
-        Log.d(TAG, "prepare() news=$newsSummary")
+        val weather = weatherJob?.await()?.toSpeechZh()
+            ?: if (config.skipWeather) "" else "天气暂时无法获取"
+        val news = newsJob?.await().orEmpty().map {
+            NewsReading(
+                title = it.title,
+                content = it.content.ifBlank { "暂时无法取得这条新闻的正文。" }
+            )
+        }
 
         BroadcastContent(
             greeting = "早安，晨光播报开始。",
-            passageName = passageName,
+            passageName = passages.joinToString("、") { it.toChineseTitle() },
             weather = weather,
             passages = readings,
-            marketSummary = marketSummary,
-            newsSummary = newsSummary
+            news = news
         )
     }
 
     private suspend fun deliver(content: BroadcastContent, config: BroadcastConfig) {
         safeSpeak(content.greeting, Language.ZH)
 
-        if (!config.skipWeather) safeSpeak(content.weather, Language.ZH)
-
-        val actuallySkipBible = when {
-            config.skipBible -> true
-            content.passageName.isBlank() -> false
-            else -> {
-                safeSpeak("今天读经是${content.passageName}，请确认或跳过", Language.ZH)
-                val result = speechEngine.listenForConfirmation(8_000L)
-                Log.d(TAG, "Voice confirmation: $result")
-                result == ConfirmationResult.Skipped
-            }
+        if (!config.skipWeather) {
+            safeSpeak(content.weather, Language.ZH)
         }
 
-        if (!actuallySkipBible && content.passages.isNotEmpty()) {
+        // Elder-friendly flow: announce the plan once, then continue without voice confirmation.
+        if (!config.skipBible && content.passages.isNotEmpty()) {
+            safeSpeak("今天读经是${content.passageName}。现在开始读经。", Language.ZH)
             for (passage in content.passages) {
                 safeSpeak("现在读${passage.titleZh}。", Language.ZH)
                 val playedRecording = config.preferRecordedBible &&
                     passage.isWholeChapter &&
                     safePlayRecordedChapter(passage.book, passage.chapter)
                 if (!playedRecording) {
-                    safeSpeak(passage.zh, Language.ZH)
+                    safeSpeakLong(passage.zh, Language.ZH)
                 }
                 if (config.includeEnglishBible && passage.en.isNotBlank()) {
-                    safeSpeak(passage.en, Language.EN)
+                    safeSpeakLong(passage.en, Language.EN)
                 }
             }
-            if (!config.skipFinance || !config.skipNews) {
+            if (!config.skipNews) {
                 safeSpeak("今日读经结束。", Language.ZH)
             }
         }
 
-        if (!config.skipFinance) {
-            safeSpeak("今日市场行情：", Language.ZH)
-            safeSpeak(content.marketSummary, Language.ZH)
-        }
-
         if (!config.skipNews) {
-            safeSpeak("今日财经头条：", Language.ZH)
-            safeSpeak(content.newsSummary, Language.ZH)
+            if (content.news.isEmpty()) {
+                safeSpeak("今日新闻暂时无法获取。", Language.ZH)
+            } else {
+                safeSpeak("下面播报今日三条要闻。", Language.ZH)
+                content.news.forEachIndexed { index, item ->
+                    safeSpeak("第${index + 1}条，${item.title}。", Language.ZH)
+                    safeSpeakLong(item.content, Language.ZH)
+                }
+            }
         }
 
         safeSpeak("晨光播报结束，愿你今天蒙福。", Language.ZH)
     }
 
-    private fun buildSystemPrompt(content: BroadcastContent): String = buildString {
-        appendLine("你是晨光播报助手，帮助海外华人开始新的一天。请用简洁、温暖的中文回答。")
-        appendLine("今日天气：${content.weather}")
-        if (content.passageName.isNotBlank()) appendLine("今日读经：${content.passageName}")
-        appendLine("今日行情：${content.marketSummary}")
-        appendLine("今日头条：${content.newsSummary}")
+    private suspend fun safeSpeakLong(text: String, language: Language) {
+        splitForTts(text).forEach { safeSpeak(it, language) }
+    }
+
+    internal fun splitForTts(text: String): List<String> {
+        val clean = text.replace(Regex("\\s+"), " ").trim()
+        if (clean.length <= MAX_TTS_CHUNK) return listOf(clean).filter { it.isNotBlank() }
+
+        val chunks = mutableListOf<String>()
+        var remaining = clean
+        while (remaining.isNotBlank()) {
+            if (remaining.length <= MAX_TTS_CHUNK) {
+                chunks += remaining
+                break
+            }
+            val window = remaining.take(MAX_TTS_CHUNK)
+            val cut = listOf('。', '！', '？', '；', '.', '!', '?')
+                .maxOfOrNull { window.lastIndexOf(it) }
+                ?.takeIf { it >= MAX_TTS_CHUNK / 2 }
+                ?.plus(1)
+                ?: MAX_TTS_CHUNK
+            chunks += remaining.take(cut).trim()
+            remaining = remaining.drop(cut).trim()
+        }
+        return chunks
     }
 
     private suspend fun safeSpeak(text: String, language: Language) {
         if (text.isBlank()) return
-        Log.d(TAG, "speak: \"${text.take(30)}\" [$language]")
+        require(text.length <= MAX_TTS_CHUNK)
         runCatching { ttsEngine.speak(text, language) }
-            .onFailure { e ->
-                Log.e(TAG, "speak failed: ${e.message}")
-                if (e is CancellationException) throw e
+            .onFailure { error ->
+                Log.e(TAG, "speak failed: ${error.message}")
+                if (error is CancellationException) throw error
             }
     }
 

@@ -507,8 +507,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="60dp"
                 android:layout_marginTop="8dp"
-                android:text="更新天气位置"
-                android:textSize="18sp" />
+                android:text="允许获取天气位置"
+                android:textSize="18sp"
+                android:visibility="gone" />
         </LinearLayout>
 
         <Space

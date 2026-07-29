@@ -1,6 +1,7 @@
 package com.morninggrace.tts
 
 import android.content.Context
+import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import com.morninggrace.core.model.Language
@@ -90,7 +91,12 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
                 }
             })
 
-            val result = engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+            val params = Bundle().apply {
+                // Recorded Bible files are mastered more quietly than most system voices.
+                // Slightly attenuate TTS so transitions do not jump in perceived loudness.
+                putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, TTS_VOLUME)
+            }
+            val result = engine.speak(text, TextToSpeech.QUEUE_FLUSH, params, utteranceId)
             if (result == TextToSpeech.ERROR && cont.isActive) {
                 cont.resumeWithException(RuntimeException("TTS speak() returned ERROR"))
             }
@@ -105,5 +111,6 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
         const val PREFS = "alarm_prefs"
         const val KEY_CHINESE_SPEECH_RATE = "chinese_speech_rate"
         const val DEFAULT_CHINESE_SPEECH_RATE = 0.88f
+        const val TTS_VOLUME = 0.82f
     }
 }
