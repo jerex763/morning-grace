@@ -11,13 +11,16 @@ import android.content.res.ColorStateList
 import android.location.Location
 import android.location.Geocoder
 import android.location.LocationManager
+import android.media.AudioManager
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
+import android.net.Uri
 import android.text.format.Formatter
 import android.view.View
 import android.widget.LinearLayout
@@ -39,6 +42,7 @@ import com.morninggrace.alarm.AlarmScheduler
 import com.morninggrace.alarm.AlarmService
 import com.morninggrace.bible.BookNames
 import com.morninggrace.bible.audio.BibleAudioLibrary
+import com.morninggrace.bible.audio.InsufficientStorageException
 import com.morninggrace.bible.plan.SequentialPlan
 import com.morninggrace.bible.toChineseTitle
 import com.morninggrace.core.model.AlarmConfig
@@ -76,14 +80,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var networkBanner: TextView
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) = runOnUiThread { networkBanner.visibility = View.GONE }
-        override fun onLost(network: Network) = runOnUiThread { networkBanner.visibility = View.VISIBLE }
+        override fun onAvailable(network: Network) = runOnUiThread { updateNetworkBanner() }
+        override fun onLost(network: Network) = runOnUiThread { updateNetworkBanner() }
     }
 
     private var selectedHour = 6
     private var selectedMinute = 0
     private var isBroadcastPlaying = false
     private var playbackReceiverRegistered = false
+    private var summaryRefreshGeneration = 0
 
     private val playbackStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -96,6 +101,7 @@ class MainActivity : AppCompatActivity() {
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) {
+        updateSystemReadinessStatus()
         // Android only presents one runtime-permission dialog at a time.
         // Start location onboarding after the notification decision completes.
         refreshLocationAutomatically()
@@ -121,19 +127,35 @@ class MainActivity : AppCompatActivity() {
         button.isEnabled = false
         status.text = "正在导入 ${uris.size} 个音频包，请保持应用开启…"
         lifecycleScope.launch {
-            val result = bibleAudioLibrary.importZipArchives(contentResolver, uris)
-            button.isEnabled = true
-            updateBibleAudioStatus()
-            AlertDialog.Builder(this@MainActivity)
-                .setTitle("真人圣经录音导入完成")
-                .setMessage(
-                    "新增 ${result.imported} 章\n" +
-                        "已有 ${result.alreadyPresent} 章\n" +
-                        "忽略 ${result.ignored} 个无法识别的文件\n" +
-                        "失败 ${result.failedArchives} 个压缩包"
-                )
-                .setPositiveButton("好", null)
-                .show()
+            try {
+                val result = bibleAudioLibrary.importZipArchives(contentResolver, uris) { progress ->
+                    runOnUiThread {
+                        status.text =
+                            "正在导入第 ${progress.archiveNumber}/${progress.archiveCount} 个录音包\n" +
+                                "已检查 ${progress.processedChapters} 章，请保持应用开启…"
+                    }
+                }
+                updateBibleAudioStatus()
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("真人圣经录音导入完成")
+                    .setMessage(
+                        "新增 ${result.imported} 章\n" +
+                            "已有 ${result.alreadyPresent} 章\n" +
+                            "忽略 ${result.ignored} 个无法识别的文件\n" +
+                            "失败 ${result.failedArchives} 个压缩包"
+                    )
+                    .setPositiveButton("好", null)
+                    .show()
+            } catch (error: InsufficientStorageException) {
+                status.text = "空间不足，录音尚未导入"
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("手机空间不足")
+                    .setMessage(error.message)
+                    .setPositiveButton("好", null)
+                    .show()
+            } finally {
+                button.isEnabled = true
+            }
         }
     }
 
@@ -161,6 +183,7 @@ class MainActivity : AppCompatActivity() {
         alarmSwitch.isChecked = prefs.getBoolean("enabled", false)
         updateTimeDisplay()
         updateLocationStatus()
+        updateSystemReadinessStatus()
         if (!waitingForNotificationPermission) {
             refreshLocationAutomatically()
         }
@@ -181,6 +204,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         alarmSwitch.setOnCheckedChangeListener { _, enabled ->
+            if (enabled && !hasNotificationPermission()) {
+                warning.text = "请先允许通知，锁屏后才能看到停止播放按钮"
+                warning.visibility = View.VISIBLE
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                alarmSwitch.isChecked = false
+                return@setOnCheckedChangeListener
+            }
             if (enabled && !permissionChecker.canScheduleExactAlarms()) {
                 warning.visibility = View.VISIBLE
                 startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
@@ -193,6 +223,9 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<MaterialButton>(R.id.locationButton).setOnClickListener {
             requestLocationOrFetch()
+        }
+        findViewById<MaterialButton>(R.id.backgroundProtectionButton).setOnClickListener {
+            showBackgroundProtectionGuide()
         }
 
         // Module toggles
@@ -299,10 +332,7 @@ class MainActivity : AppCompatActivity() {
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .build()
         cm.registerNetworkCallback(req, networkCallback)
-        val connected = cm.activeNetwork?.let {
-            cm.getNetworkCapabilities(it)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-        } ?: false
-        networkBanner.visibility = if (connected) View.GONE else View.VISIBLE
+        updateNetworkBanner()
     }
 
     override fun onStop() {
@@ -320,8 +350,65 @@ class MainActivity : AppCompatActivity() {
             findViewById<TextView>(R.id.permissionWarning).visibility = View.GONE
         }
         updateLocationStatus()
+        updateSystemReadinessStatus()
         updateBibleProgress()
         updatePlaybackButton(prefs.getBoolean(AlarmService.KEY_PLAYBACK_ACTIVE, false))
+    }
+
+    private fun updateNetworkBanner() {
+        val connectivity = getSystemService(ConnectivityManager::class.java)
+        val connected = connectivity.activeNetwork?.let { network ->
+            connectivity.getNetworkCapabilities(network)
+                ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        } == true
+        networkBanner.visibility = if (connected) View.GONE else View.VISIBLE
+    }
+
+    private fun updateSystemReadinessStatus() {
+        val notificationReady = hasNotificationPermission()
+        val batteryReady = getSystemService(PowerManager::class.java)
+            .isIgnoringBatteryOptimizations(packageName)
+        val audioManager = getSystemService(AudioManager::class.java)
+        val alarmVolumeReady = audioManager.getStreamVolume(AudioManager.STREAM_ALARM) > 0
+        val status = buildList {
+            add(if (notificationReady) "✓ 通知栏停止按钮可用" else "⚠ 未允许通知，锁屏时看不到停止按钮")
+            add(if (alarmVolumeReady) "✓ 闹钟音量已开启" else "⚠ 闹钟音量为零，播报可能无声")
+            add(if (batteryReady) "✓ 已允许后台持续播放" else "⚠ 请设置后台播放保护")
+        }.joinToString("\n")
+        findViewById<TextView>(R.id.systemReadinessStatus).text = status
+    }
+
+    private fun showBackgroundProtectionGuide() {
+        AlertDialog.Builder(this)
+            .setTitle("设置后台播放保护")
+            .setMessage(
+                "为了每天锁屏后也能准时播放，请完成下面设置：\n\n" +
+                    "1. 允许忽略电池优化\n" +
+                    "2. 在 OPPO 手机管家中允许“晨光”自启动和后台活动\n" +
+                    "3. 不要在“一键清理”中关闭晨光\n" +
+                    "4. 确认闹钟音量不是零"
+            )
+            .setNegativeButton("稍后", null)
+            .setPositiveButton("打开设置") { _, _ -> openBatteryOptimizationSettings() }
+            .show()
+    }
+
+    private fun openBatteryOptimizationSettings() {
+        val power = getSystemService(PowerManager::class.java)
+        val intent = if (!power.isIgnoringBatteryOptimizations(packageName)) {
+            Intent(
+                Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                Uri.parse("package:$packageName")
+            )
+        } else {
+            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+        }
+        runCatching { startActivity(intent) }
+            .onFailure {
+                startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.parse("package:$packageName")
+                })
+            }
     }
 
     private fun updatePlaybackButton(playing: Boolean) {
@@ -362,41 +449,76 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshHomeSummaries() {
         val weatherView = findViewById<TextView>(R.id.weatherSummary)
+        val weatherIcon = findViewById<TextView>(R.id.weatherIcon)
         val newsView = findViewById<TextView>(R.id.newsSummary)
         val cache = getSharedPreferences("home_summary_cache", MODE_PRIVATE)
+        val today = LocalDate.now().toString()
+        val location = locationRepo.get()
+        val locationKey = "%.3f,%.3f".format(Locale.US, location.lat, location.lon)
+        val generation = ++summaryRefreshGeneration
 
-        weatherView.text = cache.getString("weather", null)
-            ?.takeUnless { it.contains("9999") }
-            ?: "正在更新…"
-        newsView.text = cache.getString("news", "正在更新…")
+        val weatherFresh = cache.getString("weather_date", null) == today &&
+            cache.getString("weather_location", null) == locationKey
+        weatherView.text = if (weatherFresh) {
+            cache.getString("weather", "正在更新…")
+        } else {
+            cache.getString("weather_date", null)?.let { "上次更新：$it\n正在获取今天的天气…" }
+                ?: "正在更新…"
+        }
+        weatherIcon.text = if (weatherFresh) cache.getString("weather_icon", "🌤") else "🕒"
+
+        val newsFresh = cache.getString("news_date", null) == today
+        newsView.text = if (newsFresh) {
+            cache.getString("news", "正在更新…")
+        } else {
+            cache.getString("news_date", null)?.let { "上次更新：$it\n正在获取今天的新闻…" }
+                ?: "正在更新…"
+        }
 
         lifecycleScope.launch {
-            val location = locationRepo.get()
             val weatherJob = async {
                 weatherRepo.getCurrentWeather(location)
             }
             val newsJob = async { newsRepo.getTopHeadlines(3) }
 
             weatherJob.await()?.let { weather ->
+                if (generation != summaryRefreshGeneration) return@let
                 val summary = "${weather.locationName}  ${weather.temperatureCelsius.toInt()}°  ${weather.shortDescription()}\n" +
                     "湿度 ${weather.humidity}%"
+                val icon = weather.icon()
                 weatherView.text = summary
-                cache.edit().putString("weather", summary).apply()
+                weatherIcon.text = icon
+                cache.edit()
+                    .putString("weather", summary)
+                    .putString("weather_icon", icon)
+                    .putString("weather_date", today)
+                    .putString("weather_location", locationKey)
+                    .putLong("weather_updated_at", System.currentTimeMillis())
+                    .apply()
             } ?: run {
-                if (cache.getString("weather", null) == null) {
-                    weatherView.text = "天气暂时\n无法获取"
+                if (generation == summaryRefreshGeneration && !weatherFresh) {
+                    weatherView.text = cache.getString("weather_date", null)?.let {
+                        "今天的天气暂时无法获取\n上次更新：$it"
+                    } ?: "天气暂时\n无法获取"
+                    weatherIcon.text = "⚠"
                 }
             }
 
             val headlines = newsJob.await()
-            if (headlines.isNotEmpty()) {
+            if (headlines.isNotEmpty() && generation == summaryRefreshGeneration) {
                 val summary = headlines.take(3).mapIndexed { index, item ->
                     "${index + 1}. ${item.title}"
                 }.joinToString("\n")
                 newsView.text = summary
-                cache.edit().putString("news", summary).apply()
-            } else if (cache.getString("news", null) == null) {
-                newsView.text = "新闻暂时\n无法获取"
+                cache.edit()
+                    .putString("news", summary)
+                    .putString("news_date", today)
+                    .putLong("news_updated_at", System.currentTimeMillis())
+                    .apply()
+            } else if (generation == summaryRefreshGeneration && !newsFresh) {
+                newsView.text = cache.getString("news_date", null)?.let {
+                    "今天的新闻暂时无法获取\n上次更新：$it"
+                } ?: "新闻暂时\n无法获取"
             }
         }
     }
@@ -414,6 +536,19 @@ class MainActivity : AppCompatActivity() {
         95 -> "雷阵雨"
         else -> "天气变化"
     } }
+
+    private fun WeatherData.icon(): String {
+        val description = shortDescription()
+        return when {
+            "雷" in description -> "⛈"
+            "雪" in description -> "🌨"
+            "雨" in description -> "🌧"
+            "雾" in description -> "🌫"
+            "晴" in description -> "☀"
+            "云" in description || "阴" in description -> "☁"
+            else -> "🌤"
+        }
+    }
 
     private fun showWheelTimePicker(alarmSwitch: SwitchMaterial) {
         val view = layoutInflater.inflate(R.layout.dialog_time_picker, null)
@@ -592,11 +727,19 @@ class MainActivity : AppCompatActivity() {
     private fun updateBibleAudioStatus() {
         val stats = bibleAudioLibrary.stats()
         val size = Formatter.formatShortFileSize(this, stats.totalBytes)
+        val ttsKnownUnavailable =
+            prefs.contains(AlarmService.KEY_TTS_AVAILABLE) &&
+                !prefs.getBoolean(AlarmService.KEY_TTS_AVAILABLE, true)
         findViewById<TextView>(R.id.bibleAudioStatus).text =
             if (stats.chapterCount == 0) {
-                "尚未导入真人录音；播报会使用中文系统语音"
+                if (ttsKnownUnavailable) {
+                    "系统中文语音不可用，请先导入真人圣经录音"
+                } else {
+                    "尚未导入真人录音；播报会使用中文系统语音"
+                }
             } else {
-                "真人录音：${stats.chapterCount} / ${BibleAudioLibrary.TOTAL_BIBLE_CHAPTERS} 章 · $size"
+                "真人录音：${stats.chapterCount} / ${BibleAudioLibrary.TOTAL_BIBLE_CHAPTERS} 章 · $size" +
+                    if (ttsKnownUnavailable) "\n系统语音不可用，但真人录音仍可播放" else ""
             }
     }
 
@@ -743,10 +886,14 @@ class MainActivity : AppCompatActivity() {
             val cityName = withContext(Dispatchers.IO) {
                 resolveCityName(location.latitude, location.longitude)
             }
+            if (cityName == null) {
+                useBeijingFallback("无法确认当前位置在中国")
+                return@launch
+            }
             locationRepo.save(
                 location.latitude,
                 location.longitude,
-                cityName ?: "当前位置"
+                cityName
             )
             updateLocationStatus()
             refreshHomeSummaries()
@@ -784,8 +931,10 @@ class MainActivity : AppCompatActivity() {
             Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
         val granted = fine || coarse
-        findViewById<MaterialButton>(R.id.locationButton).visibility =
-            if (granted) View.GONE else View.VISIBLE
+        findViewById<MaterialButton>(R.id.locationButton).apply {
+            visibility = View.VISIBLE
+            text = if (granted) "更新天气位置" else "允许获取天气位置"
+        }
         locationStatus.text = if (granted && locationRepo.hasLocation()) {
             "天气位置：${locationRepo.get().cityName}"
         } else if (locationRepo.hasLocation()) {
@@ -797,14 +946,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestNotificationPermissionIfNeeded(): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                return true
-            }
+        if (!hasNotificationPermission()) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return true
         }
         return false
     }
+
+    private fun hasNotificationPermission(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
 }

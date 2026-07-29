@@ -1,6 +1,7 @@
 package com.morninggrace.tts
 
 import android.content.Context
+import android.media.AudioAttributes
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
@@ -28,14 +29,31 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
         android.util.Log.d("MorningGrace", "TTS onInit: status=$status ready=$ready (SUCCESS=${TextToSpeech.SUCCESS})")
     }
 
-    /** Must be called before [speak]. Suspends until TTS engine is initialised; throws on failure. */
-    suspend fun attach(context: Context) = suspendCancellableCoroutine<Unit> { cont ->
+    /**
+     * Initialises the system voice. Returns false instead of throwing so callers
+     * can still continue with imported recordings on devices without Chinese TTS.
+     */
+    suspend fun attach(context: Context): Boolean = suspendCancellableCoroutine { cont ->
         attachedContext = context.applicationContext
         val engine = TextToSpeech(context) { status ->
             onInitResult(status)
             if (!cont.isActive) return@TextToSpeech
-            if (status == TextToSpeech.SUCCESS) cont.resume(Unit)
-            else cont.resumeWithException(RuntimeException("TTS init failed, status=$status"))
+            val initialized = if (status == TextToSpeech.SUCCESS) {
+                val current = tts
+                current?.setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                )
+                val languageStatus = current?.setLanguage(Locale.SIMPLIFIED_CHINESE)
+                    ?: TextToSpeech.LANG_NOT_SUPPORTED
+                languageStatus >= TextToSpeech.LANG_AVAILABLE
+            } else {
+                false
+            }
+            ready = initialized
+            cont.resume(initialized)
         }
         tts = engine
         cont.invokeOnCancellation { engine.stop(); engine.shutdown() }
@@ -61,7 +79,10 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
             Language.ZH -> Locale.SIMPLIFIED_CHINESE
             Language.EN -> Locale.ENGLISH
         }
-        engine.language = locale
+        val languageStatus = engine.setLanguage(locale)
+        require(languageStatus >= TextToSpeech.LANG_AVAILABLE) {
+            "TTS language unavailable: $locale"
+        }
         val speechRate = if (language == Language.ZH) {
             attachedContext
                 ?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

@@ -4,6 +4,7 @@
 # Gradle
 .gradle/
 local.properties
+keystore.properties
 
 # IDE
 .idea/

@@ -14,6 +14,7 @@ import com.morninggrace.core.repository.WeatherRepository
 import com.morninggrace.tts.TtsEngine
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.mockk
 import java.time.LocalDate
@@ -124,6 +125,39 @@ class BroadcastOrchestratorTest {
         coVerify(exactly = 4) { bibleAudioPlayer.playChapter(any(), any()) }
         coVerify(exactly = 0) {
             ttsEngine.speak("起初，神创造天地。", Language.ZH)
+        }
+    }
+
+    @Test
+    fun `recorded chapters still play when system TTS is unavailable`() = runTest {
+        every { ttsEngine.isAvailable() } returns false
+        coEvery { ttsEngine.speak(any(), any()) } throws
+            IllegalStateException("TTS unavailable")
+        coEvery { bibleAudioPlayer.playChapter(any(), any()) } returns true
+
+        orchestrator.broadcast(
+            LocalDate.of(2026, 1, 1),
+            BroadcastConfig(skipWeather = true, skipNews = true)
+        )
+
+        coVerify(exactly = 4) { bibleAudioPlayer.playChapter(any(), any()) }
+    }
+
+    @Test
+    fun `news completes before Bible recording begins`() = runTest {
+        coEvery { bibleAudioPlayer.playChapter(any(), any()) } returns true
+        coEvery { newsRepo.getTopHeadlines(3, false) } returns listOf(
+            NewsHeadline(title = "新闻标题", summary = "新闻概述")
+        )
+
+        orchestrator.broadcast(
+            LocalDate.of(2026, 1, 1),
+            BroadcastConfig(skipWeather = true)
+        )
+
+        coVerifyOrder {
+            ttsEngine.speak("新闻概述", Language.ZH)
+            bibleAudioPlayer.playChapter(any(), any())
         }
     }
 

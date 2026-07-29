@@ -8,7 +8,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="晨光正在播放"
+        android:text="@string/notification_title"
         android:textColor="#202020"
         android:textSize="20sp"
         android:textStyle="bold" />
@@ -17,7 +17,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="天气 · 今日读经 · 三条要闻"
+        android:text="@string/notification_content_order"
         android:textColor="#555555"
         android:textSize="15sp" />
 
@@ -27,7 +27,7 @@
         android:layout_height="64dp"
         android:layout_marginTop="12dp"
         android:backgroundTint="#9A3F2C"
-        android:text="■  停止播放"
+        android:text="@string/notification_stop_large"
         android:textColor="#FFFFFF"
         android:textSize="20sp"
         android:textStyle="bold" />

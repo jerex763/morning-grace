@@ -6,7 +6,8 @@ import java.time.temporal.ChronoUnit
 
 /**
  * Three-chapters-a-day plan starting from a user-specified book/chapter.
- * Advances three chapters per calendar day. Wraps book→book, then loops.
+ * Advances up to three chapters per calendar day. The final day contains the
+ * one remaining chapter, then the next day starts a new full-Bible cycle.
  */
 class ChapterADayPlan(
     startBook: Int = 1,
@@ -28,8 +29,11 @@ class ChapterADayPlan(
 
     override fun getReadingForDate(date: LocalDate): List<BiblePassage> {
         val daysSinceEpoch = ChronoUnit.DAYS.between(epoch, date).toInt()
-        val firstIdx = ((startIdx + daysSinceEpoch * CHAPTERS_PER_DAY) % allChapters.size + allChapters.size) % allChapters.size
-        return List(CHAPTERS_PER_DAY) { offset ->
+        val dayInCycle = Math.floorMod(daysSinceEpoch, getTotalDays())
+        val consumed = dayInCycle * CHAPTERS_PER_DAY
+        val count = minOf(CHAPTERS_PER_DAY, allChapters.size - consumed)
+        val firstIdx = (startIdx + consumed) % allChapters.size
+        return List(count) { offset ->
             allChapters[(firstIdx + offset) % allChapters.size]
         }
     }

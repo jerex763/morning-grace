@@ -21,7 +21,7 @@
             android:background="@color/warning"
             android:gravity="center"
             android:padding="12dp"
-            android:text="现在没有网络，将使用上次更新的内容"
+            android:text="@string/offline_banner"
             android:textColor="#FFFFFF"
             android:textSize="17sp"
             android:textStyle="bold"
@@ -48,7 +48,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif"
-                    android:text="早上好"
+                    android:text="@string/greeting_placeholder"
                     android:textColor="@color/accent_dark"
                     android:textSize="34sp"
                     android:textStyle="bold" />
@@ -58,7 +58,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="2026年7月29日  星期三"
+                    android:text="@string/date_placeholder"
                     android:textColor="@color/text_primary"
                     android:textSize="19sp" />
             </LinearLayout>
@@ -69,10 +69,10 @@
                 android:layout_height="64dp"
                 android:background="@drawable/bg_round_outline"
                 android:clickable="true"
-                android:contentDescription="打开设置"
+                android:contentDescription="@string/open_settings"
                 android:focusable="true"
                 android:gravity="center"
-                android:text="设置"
+                android:text="@string/settings"
                 android:textColor="@color/accent_dark"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -105,7 +105,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="每天自动播放"
+                        android:text="@string/daily_auto_play"
                         android:textColor="@color/text_primary"
                         android:textSize="20sp"
                         android:textStyle="bold" />
@@ -117,9 +117,9 @@
                         android:layout_marginTop="2dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:clickable="true"
-                        android:contentDescription="修改每天播放时间"
+                        android:contentDescription="@string/change_daily_time"
                         android:focusable="true"
-                        android:text="06:00"
+                        android:text="@string/time_placeholder"
                         android:textColor="@color/accent_dark"
                         android:textSize="38sp"
                         android:textStyle="bold" />
@@ -128,8 +128,9 @@
                 <com.google.android.material.switchmaterial.SwitchMaterial
                     android:id="@+id/alarmSwitch"
                     android:layout_width="72dp"
-                    android:layout_height="64dp"
-                    android:contentDescription="开启或关闭每天自动播放"
+                    android:layout_height="wrap_content"
+                    android:minHeight="64dp"
+                    android:contentDescription="@string/toggle_daily_play"
                     app:switchMinWidth="64dp"
                     app:useMaterialThemeColors="true" />
             </LinearLayout>
@@ -142,7 +143,7 @@
             android:layout_marginHorizontal="22dp"
             android:layout_marginTop="8dp"
             android:gravity="center"
-            android:text="请允许精确闹钟，才能准时自动播放"
+            android:text="@string/exact_alarm_warning"
             android:textColor="@color/warning"
             android:textSize="17sp"
             android:textStyle="bold"
@@ -151,11 +152,12 @@
         <com.google.android.material.button.MaterialButton
             android:id="@+id/testBroadcastButton"
             android:layout_width="match_parent"
-            android:layout_height="86dp"
+            android:layout_height="wrap_content"
+            android:minHeight="86dp"
             android:layout_marginHorizontal="18dp"
             android:layout_marginTop="18dp"
-            android:contentDescription="开始今天的晨间播报"
-            android:text="▶  开始今天的播报"
+            android:contentDescription="@string/start_broadcast_description"
+            android:text="@string/start_broadcast"
             android:textAllCaps="false"
             android:textSize="23sp"
             android:textStyle="bold"
@@ -184,7 +186,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:paddingHorizontal="22dp"
-                    android:text="今天读什么"
+                    android:text="@string/today_reading"
                     android:textColor="@color/text_primary"
                     android:textSize="25sp"
                     android:textStyle="bold" />
@@ -199,7 +201,7 @@
                     android:focusable="true"
                     android:gravity="center_vertical"
                     android:paddingHorizontal="10dp"
-                    android:text="麦大卫一年读经  ▼"
+                    android:text="@string/reading_plan_placeholder"
                     android:textColor="@color/accent_dark"
                     android:textSize="18sp"
                     android:textStyle="bold" />
@@ -210,7 +212,7 @@
                     android:layout_height="wrap_content"
                     android:paddingHorizontal="22dp"
                     android:paddingTop="4dp"
-                    android:text="第 201 / 365 天"
+                    android:text="@string/reading_progress_placeholder"
                     android:textColor="@color/text_secondary"
                     android:textSize="18sp" />
 
@@ -222,7 +224,7 @@
                     android:paddingHorizontal="22dp"
                     android:paddingTop="14dp"
                     android:paddingBottom="12dp"
-                    android:text="1. 创世记第一章&#10;2. 马太福音第一章"
+                    android:text="@string/reading_preview_placeholder"
                     android:textColor="@color/text_primary"
                     android:textSize="23sp"
                     android:textStyle="bold" />
@@ -230,7 +232,8 @@
                 <LinearLayout
                     android:id="@+id/bibleProgressRow"
                     android:layout_width="match_parent"
-                    android:layout_height="64dp"
+                    android:layout_height="wrap_content"
+                    android:minHeight="72dp"
                     android:layout_marginHorizontal="12dp"
                     android:layout_marginTop="4dp"
                     android:background="@drawable/bg_day_navigation"
@@ -239,37 +242,40 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/biblePreviousDay"
-                        style="@style/Widget.Material3.Button.TextButton"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
                         android:layout_width="0dp"
-                        android:layout_height="64dp"
+                        android:layout_height="wrap_content"
+                        android:minHeight="64dp"
                         android:layout_weight="1"
-                        android:contentDescription="查看前一天"
-                        android:text="‹  前一天"
+                        android:contentDescription="@string/previous_day_description"
+                        android:text="@string/previous_day"
                         android:textColor="@color/text_label"
                         android:textSize="18sp" />
 
                     <TextView
                         android:id="@+id/bibleDayPickerButton"
-                        android:layout_width="72dp"
-                        android:layout_height="64dp"
+                        android:layout_width="96dp"
+                        android:layout_height="wrap_content"
+                        android:minHeight="64dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:clickable="true"
-                        android:contentDescription="选择计划日"
+                        android:contentDescription="@string/choose_day_description"
                         android:focusable="true"
                         android:gravity="center"
-                        android:text="选天数"
+                        android:text="@string/choose_day"
                         android:textColor="@color/accent_dark"
                         android:textSize="15sp"
                         android:textStyle="bold" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/bibleNextDay"
-                        style="@style/Widget.Material3.Button.TextButton"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
                         android:layout_width="0dp"
-                        android:layout_height="64dp"
+                        android:layout_height="wrap_content"
+                        android:minHeight="64dp"
                         android:layout_weight="1"
-                        android:contentDescription="查看后一天"
-                        android:text="后一天  ›"
+                        android:contentDescription="@string/next_day_description"
+                        android:text="@string/next_day"
                         android:textColor="@color/text_label"
                         android:textSize="18sp" />
                 </LinearLayout>
@@ -293,10 +299,11 @@
                 android:padding="20dp">
 
                 <TextView
+                    android:id="@+id/weatherIcon"
                     android:layout_width="64dp"
                     android:layout_height="64dp"
                     android:gravity="center"
-                    android:text="☀"
+                    android:text="@string/weather_icon_default"
                     android:textColor="@color/olive"
                     android:textSize="38sp" />
 
@@ -310,7 +317,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="今天的天气"
+                        android:text="@string/today_weather"
                         android:textColor="@color/text_primary"
                         android:textSize="21sp"
                         android:textStyle="bold" />
@@ -320,7 +327,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="5dp"
-                        android:text="正在更新…"
+                        android:text="@string/updating"
                         android:textColor="@color/text_primary"
                         android:textSize="21sp" />
                 </LinearLayout>
@@ -347,7 +354,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="今日三条要闻"
+                    android:text="@string/today_news"
                     android:textColor="@color/text_primary"
                     android:textSize="23sp"
                     android:textStyle="bold" />
@@ -358,7 +365,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:lineSpacingExtra="8dp"
-                    android:text="正在更新…"
+                    android:text="@string/updating"
                     android:textColor="@color/text_primary"
                     android:textSize="19sp" />
             </LinearLayout>
@@ -378,7 +385,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="设置"
+                android:text="@string/settings"
                 android:textColor="@color/text_primary"
                 android:textSize="27sp"
                 android:textStyle="bold" />
@@ -386,9 +393,10 @@
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/moduleBible"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="wrap_content"
+                android:minHeight="64dp"
                 android:checked="true"
-                android:text="播放圣经"
+                android:text="@string/play_bible"
                 android:textColor="@color/text_primary"
                 android:textSize="20sp"
                 app:useMaterialThemeColors="true" />
@@ -402,24 +410,27 @@
                 <RadioButton
                     android:id="@+id/planMcCheyne"
                     android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:text="麦大卫一年读经"
+                    android:layout_height="wrap_content"
+                    android:minHeight="56dp"
+                    android:text="@string/mccheyne_plan"
                     android:textColor="@color/text_primary"
                     android:textSize="18sp" />
 
                 <RadioButton
                     android:id="@+id/planSequential"
                     android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:text="顺序读经"
+                    android:layout_height="wrap_content"
+                    android:minHeight="56dp"
+                    android:text="@string/sequential_plan"
                     android:textColor="@color/text_primary"
                     android:textSize="18sp" />
 
                 <RadioButton
                     android:id="@+id/planChapterADay"
                     android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:text="每天三章"
+                    android:layout_height="wrap_content"
+                    android:minHeight="56dp"
+                    android:text="@string/three_chapters_plan"
                     android:textColor="@color/text_primary"
                     android:textSize="18sp" />
             </RadioGroup>
@@ -433,9 +444,10 @@
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/bibleRecordedAudio"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="wrap_content"
+                android:minHeight="64dp"
                 android:checked="true"
-                android:text="使用真人圣经朗读"
+                android:text="@string/recorded_bible"
                 android:textColor="@color/text_primary"
                 android:textSize="20sp"
                 app:useMaterialThemeColors="true" />
@@ -444,7 +456,7 @@
                 android:id="@+id/bibleAudioStatus"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="真人录音已准备"
+                android:text="@string/recorded_ready"
                 android:textColor="@color/text_secondary"
                 android:textSize="17sp" />
 
@@ -452,9 +464,10 @@
                 android:id="@+id/importBibleAudioButton"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="match_parent"
-                android:layout_height="60dp"
+                android:layout_height="wrap_content"
+                android:minHeight="60dp"
                 android:layout_marginTop="8dp"
-                android:text="导入真人圣经录音"
+                android:text="@string/import_recordings"
                 android:textSize="18sp" />
 
             <TextView
@@ -462,7 +475,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="播报速度：自然"
+                android:text="@string/speech_rate_natural"
                 android:textColor="@color/text_primary"
                 android:textSize="18sp" />
 
@@ -476,9 +489,10 @@
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/moduleWeather"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="wrap_content"
+                android:minHeight="64dp"
                 android:checked="true"
-                android:text="播放天气"
+                android:text="@string/play_weather"
                 android:textColor="@color/text_primary"
                 android:textSize="20sp"
                 app:useMaterialThemeColors="true" />
@@ -486,9 +500,10 @@
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/moduleNews"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="wrap_content"
+                android:minHeight="64dp"
                 android:checked="true"
-                android:text="播放三条新闻"
+                android:text="@string/play_news"
                 android:textColor="@color/text_primary"
                 android:textSize="20sp"
                 app:useMaterialThemeColors="true" />
@@ -496,19 +511,40 @@
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/newsFullArticles"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="wrap_content"
+                android:minHeight="64dp"
                 android:checked="false"
-                android:text="播报新闻全文（时间较长）"
+                android:text="@string/play_full_news"
                 android:textColor="@color/text_primary"
                 android:textSize="18sp"
                 app:useMaterialThemeColors="true" />
+
+            <TextView
+                android:id="@+id/systemReadinessStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/checking_background"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:lineSpacingExtra="6dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/backgroundProtectionButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="64dp"
+                android:layout_marginTop="8dp"
+                android:text="@string/background_protection"
+                android:textSize="18sp" />
 
             <TextView
                 android:id="@+id/locationStatus"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:text="天气位置未设置"
+                android:text="@string/location_not_set"
                 android:textColor="@color/text_secondary"
                 android:textSize="17sp" />
 
@@ -516,9 +552,10 @@
                 android:id="@+id/locationButton"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="match_parent"
-                android:layout_height="60dp"
+                android:layout_height="wrap_content"
+                android:minHeight="60dp"
                 android:layout_marginTop="8dp"
-                android:text="允许获取天气位置"
+                android:text="@string/allow_weather_location"
                 android:textSize="18sp"
                 android:visibility="gone" />
         </LinearLayout>

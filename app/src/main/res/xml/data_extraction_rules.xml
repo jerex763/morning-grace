@@ -2,8 +2,16 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="external" path="Music/bible-audio/" />
+        <exclude domain="sharedpref" path="alarm_prefs.xml" />
+        <exclude domain="sharedpref" path="crash_prefs.xml" />
+        <exclude domain="sharedpref" path="home_summary_cache.xml" />
+        <exclude domain="database" path="bible.db" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="external" path="Music/bible-audio/" />
+        <exclude domain="sharedpref" path="alarm_prefs.xml" />
+        <exclude domain="sharedpref" path="crash_prefs.xml" />
+        <exclude domain="sharedpref" path="home_summary_cache.xml" />
+        <exclude domain="database" path="bible.db" />
     </device-transfer>
 </data-extraction-rules>

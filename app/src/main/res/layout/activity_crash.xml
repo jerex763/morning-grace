@@ -11,14 +11,14 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="😔"
+        android:text="@string/crash_face"
         android:textSize="56sp"
         android:layout_marginBottom="20dp" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="出了点问题"
+        android:text="@string/crash_title"
         android:textSize="22sp"
         android:textStyle="bold"
         android:textColor="@color/text_primary"
@@ -27,7 +27,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="应用遇到错误意外退出"
+        android:text="@string/crash_message"
         android:textSize="15sp"
         android:textColor="@color/text_secondary"
         android:layout_marginBottom="32dp" />
@@ -59,7 +59,7 @@
         android:id="@+id/restartButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="重新启动"
+        android:text="@string/restart"
         android:paddingHorizontal="32dp"
         app:backgroundTint="@color/accent" />
 

@@ -53,6 +53,7 @@ class CmaWeatherRepository @Inject constructor(
         }
 
     private suspend fun findStation(location: LocationPrefs): Station? {
+        if (location.cityName == "当前位置") return BEIJING
         if (!location.isWithinChina()) return BEIJING
         if (location.cityName == BEIJING.name &&
             location.lat == BEIJING_LAT &&

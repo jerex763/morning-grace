@@ -144,26 +144,6 @@ class BroadcastOrchestrator @Inject constructor(
             safeSpeak(content.weather, Language.ZH)
         }
 
-        // Elder-friendly flow: announce the plan once, then continue without voice confirmation.
-        if (!config.skipBible && content.passages.isNotEmpty()) {
-            safeSpeak("今天读经是${content.passageName}。现在开始读经。", Language.ZH)
-            for (passage in content.passages) {
-                safeSpeak("现在读${passage.titleZh}。", Language.ZH)
-                val playedRecording = config.preferRecordedBible &&
-                    passage.isWholeChapter &&
-                    safePlayRecordedChapter(passage.book, passage.chapter)
-                if (!playedRecording) {
-                    safeSpeakLong(passage.zh, Language.ZH)
-                }
-                if (config.includeEnglishBible && passage.en.isNotBlank()) {
-                    safeSpeakLong(passage.en, Language.EN)
-                }
-            }
-            if (!config.skipNews) {
-                safeSpeak("今日读经结束。", Language.ZH)
-            }
-        }
-
         if (!config.skipNews) {
             if (content.news.isEmpty()) {
                 safeSpeak("今日新闻暂时无法获取。", Language.ZH)
@@ -183,6 +163,24 @@ class BroadcastOrchestrator @Inject constructor(
                     safeSpeakLong(item.content, Language.ZH)
                 }
             }
+        }
+
+        // Elder-friendly flow: weather and news continue directly into Bible audio.
+        if (!config.skipBible && content.passages.isNotEmpty()) {
+            safeSpeak("今天读经是${content.passageName}。现在开始读经。", Language.ZH)
+            for (passage in content.passages) {
+                safeSpeak("现在读${passage.titleZh}。", Language.ZH)
+                val playedRecording = config.preferRecordedBible &&
+                    passage.isWholeChapter &&
+                    safePlayRecordedChapter(passage.book, passage.chapter)
+                if (!playedRecording) {
+                    safeSpeakLong(passage.zh, Language.ZH)
+                }
+                if (config.includeEnglishBible && passage.en.isNotBlank()) {
+                    safeSpeakLong(passage.en, Language.EN)
+                }
+            }
+            safeSpeak("今日读经结束。", Language.ZH)
         }
 
         safeSpeak("晨光播报结束，愿你今天蒙福。", Language.ZH)

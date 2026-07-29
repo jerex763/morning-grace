@@ -9,7 +9,9 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -35,6 +37,7 @@ class AlarmService : Service() {
         const val ACTION_PLAYBACK_STATE = "com.morninggrace.action.PLAYBACK_STATE"
         const val EXTRA_IS_PLAYING = "is_playing"
         const val KEY_PLAYBACK_ACTIVE = "playback_active"
+        const val KEY_TTS_AVAILABLE = "tts_available"
 
         const val KEY_MODULE_WEATHER = "module_weather"
         const val KEY_MODULE_BIBLE = "module_bible"
@@ -42,6 +45,7 @@ class AlarmService : Service() {
         const val KEY_BIBLE_RECORDED_AUDIO = "bible_recorded_audio"
         const val KEY_MODULE_NEWS = "module_news"
         const val KEY_NEWS_FULL_ARTICLES = "news_full_articles"
+        private const val MAX_WAKE_LOCK_MILLIS = 2 * 60 * 60 * 1_000L
     }
 
     @Inject lateinit var morningSession: MorningSession
@@ -49,6 +53,7 @@ class AlarmService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var broadcastJob: Job? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -66,7 +71,11 @@ class AlarmService : Service() {
             this,
             NOTIFICATION_ID,
             buildNotification(),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+            } else {
+                0
+            }
         )
         publishPlaybackState(true)
 
@@ -86,15 +95,18 @@ class AlarmService : Service() {
 
         broadcastJob = serviceScope.launch {
             try {
-                ttsEngine.attach(this@AlarmService)
+                acquireWakeLock()
+                val ttsAvailable = ttsEngine.attach(this@AlarmService)
+                prefs.edit().putBoolean(KEY_TTS_AVAILABLE, ttsAvailable).apply()
                 morningSession.start(config)
             } finally {
+                releaseWakeLock()
                 publishPlaybackState(false)
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
         }
-        return START_NOT_STICKY
+        return START_REDELIVER_INTENT
     }
 
     private fun hasInternetNetwork(): Boolean {
@@ -105,6 +117,7 @@ class AlarmService : Service() {
     }
 
     override fun onDestroy() {
+        releaseWakeLock()
         publishPlaybackState(false)
         serviceScope.cancel()
         ttsEngine.detach()
@@ -120,6 +133,21 @@ class AlarmService : Service() {
         publishPlaybackState(false)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    private fun acquireWakeLock() {
+        if (wakeLock?.isHeld == true) return
+        wakeLock = getSystemService(PowerManager::class.java)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$packageName:MorningBroadcast")
+            .apply {
+                setReferenceCounted(false)
+                acquire(MAX_WAKE_LOCK_MILLIS)
+            }
+    }
+
+    private fun releaseWakeLock() {
+        wakeLock?.takeIf { it.isHeld }?.release()
+        wakeLock = null
     }
 
     private fun publishPlaybackState(isPlaying: Boolean) {
@@ -154,8 +182,8 @@ class AlarmService : Service() {
         }
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("晨光正在播放")
-            .setContentText("点“停止播放”即可立即停止")
+            .setContentTitle(getString(R.string.notification_title))
+            .setContentText(getString(R.string.notification_description))
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentIntent(openPending)
             .setCustomBigContentView(expanded)
@@ -163,7 +191,11 @@ class AlarmService : Service() {
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setOnlyAlertOnce(true)
-            .addAction(android.R.drawable.ic_media_pause, "停止播放", stopPending)
+            .addAction(
+                android.R.drawable.ic_media_pause,
+                getString(R.string.notification_stop),
+                stopPending
+            )
             .setOngoing(true)
             .build()
     }
@@ -171,11 +203,12 @@ class AlarmService : Service() {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "晨间播报",
+            getString(R.string.notification_channel_name),
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "晨光播放控制"
+            description = getString(R.string.notification_channel_description)
         }
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
+
 }
