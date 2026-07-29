@@ -7,11 +7,13 @@ import com.morninggrace.bible.plan.BibleReadingPlan
 import com.morninggrace.bible.toChineseTitle
 import com.morninggrace.core.model.BroadcastConfig
 import com.morninggrace.core.model.Language
+import com.morninggrace.core.model.TimeGreeting
 import com.morninggrace.core.repository.LocationRepository
 import com.morninggrace.core.repository.NewsRepository
 import com.morninggrace.core.repository.WeatherRepository
 import com.morninggrace.tts.TtsEngine
 import java.time.LocalDate
+import java.time.LocalTime
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.async
@@ -36,7 +38,8 @@ class BroadcastOrchestrator @Inject constructor(
 
     suspend fun broadcast(
         date: LocalDate = LocalDate.now(),
-        config: BroadcastConfig = BroadcastConfig()
+        config: BroadcastConfig = BroadcastConfig(),
+        time: LocalTime = LocalTime.now()
     ) {
         val effectiveConfig = if (config.offline) {
             config.copy(skipWeather = true, skipNews = true)
@@ -50,7 +53,7 @@ class BroadcastOrchestrator @Inject constructor(
         }
         state = BroadcastState.Preparing
         try {
-            val content = prepare(date, effectiveConfig)
+            val content = prepare(date, effectiveConfig, time)
             state = BroadcastState.Broadcasting(content)
             deliver(content, effectiveConfig)
         } catch (error: Exception) {
@@ -69,7 +72,8 @@ class BroadcastOrchestrator @Inject constructor(
 
     private suspend fun prepare(
         date: LocalDate,
-        config: BroadcastConfig
+        config: BroadcastConfig,
+        time: LocalTime
     ): BroadcastContent = coroutineScope {
         val location = locationRepo.get()
         val weatherJob = if (!config.skipWeather) {
@@ -121,7 +125,7 @@ class BroadcastOrchestrator @Inject constructor(
         }
 
         BroadcastContent(
-            greeting = "早安，晨光播报开始。",
+            greeting = "${TimeGreeting.forTime(time)}，晨光播报开始。",
             passageName = passages.joinToString("、") { it.toChineseTitle() },
             weather = weather,
             passages = readings,

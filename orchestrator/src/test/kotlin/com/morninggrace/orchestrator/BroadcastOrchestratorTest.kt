@@ -17,6 +17,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import java.time.LocalDate
+import java.time.LocalTime
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -143,6 +144,23 @@ class BroadcastOrchestratorTest {
         coVerify(exactly = 4) { bibleAudioPlayer.playChapter(any(), any()) }
         coVerify(exactly = 0) {
             ttsEngine.speak("今日新闻暂时无法获取。", Language.ZH)
+        }
+    }
+
+    @Test
+    fun `broadcast greeting follows the current time period`() = runTest {
+        orchestrator.broadcast(
+            date = LocalDate.of(2026, 1, 1),
+            config = BroadcastConfig(
+                skipWeather = true,
+                skipBible = true,
+                skipNews = true
+            ),
+            time = LocalTime.of(19, 30)
+        )
+
+        coVerify {
+            ttsEngine.speak("晚上好，晨光播报开始。", Language.ZH)
         }
     }
 

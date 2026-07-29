@@ -41,6 +41,7 @@ import com.morninggrace.bible.audio.BibleAudioLibrary
 import com.morninggrace.bible.plan.SequentialPlan
 import com.morninggrace.bible.toChineseTitle
 import com.morninggrace.core.model.AlarmConfig
+import com.morninggrace.core.model.TimeGreeting
 import com.morninggrace.core.model.WeatherData
 import com.morninggrace.core.repository.LocationRepository
 import com.morninggrace.core.repository.NewsRepository
@@ -49,6 +50,7 @@ import com.morninggrace.orchestrator.DynamicBibleReadingPlan
 import com.morninggrace.tts.AndroidTtsEngine
 import dagger.hilt.android.AndroidEntryPoint
 import java.time.LocalDate
+import java.time.LocalTime
 import javax.inject.Inject
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
@@ -143,6 +145,8 @@ class MainActivity : AppCompatActivity() {
         timeDisplay = findViewById(R.id.timeDisplay)
         networkBanner = findViewById(R.id.networkBanner)
         val today = LocalDate.now()
+        findViewById<TextView>(R.id.greetingDisplay).text =
+            TimeGreeting.forTime(LocalTime.now())
         val weekday = arrayOf("一", "二", "三", "四", "五", "六", "日")[today.dayOfWeek.value - 1]
         findViewById<TextView>(R.id.dateDisplay).text =
             "${today.year}年${today.monthValue}月${today.dayOfMonth}日  星期$weekday"
