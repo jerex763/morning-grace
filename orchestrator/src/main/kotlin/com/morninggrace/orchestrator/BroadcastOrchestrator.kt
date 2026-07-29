@@ -144,28 +144,7 @@ class BroadcastOrchestrator @Inject constructor(
             safeSpeak(content.weather, Language.ZH)
         }
 
-        if (!config.skipNews) {
-            if (content.news.isEmpty()) {
-                safeSpeak("今日新闻暂时无法获取。", Language.ZH)
-            } else {
-                safeSpeak(
-                    if (config.newsFullArticles) {
-                        "下面播报今日三条要闻全文。"
-                    } else {
-                        "下面播报今日三条要闻概述。"
-                    },
-                    Language.ZH
-                )
-                val ordinalNames = arrayOf("第一条", "第二条", "第三条")
-                content.news.forEachIndexed { index, item ->
-                    val ordinal = ordinalNames.getOrElse(index) { "下一条" }
-                    safeSpeak("$ordinal，${item.title}。", Language.ZH)
-                    safeSpeakLong(item.content, Language.ZH)
-                }
-            }
-        }
-
-        // Elder-friendly flow: weather and news continue directly into Bible audio.
+        // Elder-friendly flow: weather continues directly into the day's reading.
         if (!config.skipBible && content.passages.isNotEmpty()) {
             safeSpeak("今天读经是${content.passageName}。现在开始读经。", Language.ZH)
             for (passage in content.passages) {
@@ -181,6 +160,27 @@ class BroadcastOrchestrator @Inject constructor(
                 }
             }
             safeSpeak("今日读经结束。", Language.ZH)
+        }
+
+        if (!config.skipNews) {
+            if (content.news.isEmpty()) {
+                safeSpeak("今日新闻暂时无法获取。", Language.ZH)
+            } else {
+                safeSpeak(
+                    if (config.newsFullArticles) {
+                        "最后播报今日三条要闻全文。"
+                    } else {
+                        "最后播报今日三条要闻概述。"
+                    },
+                    Language.ZH
+                )
+                val ordinalNames = arrayOf("第一条", "第二条", "第三条")
+                content.news.forEachIndexed { index, item ->
+                    val ordinal = ordinalNames.getOrElse(index) { "下一条" }
+                    safeSpeak("$ordinal，${item.title}。", Language.ZH)
+                    safeSpeakLong(item.content, Language.ZH)
+                }
+            }
         }
 
         safeSpeak("晨光播报结束，愿你今天蒙福。", Language.ZH)

@@ -2,7 +2,7 @@
 <resources>
     <string name="notification_title">晨光正在播放</string>
     <string name="notification_description">点“停止播放”即可立即停止</string>
-    <string name="notification_content_order">天气 · 三条要闻 · 今日读经</string>
+    <string name="notification_content_order">天气 · 今日读经 · 三条要闻</string>
     <string name="notification_stop">停止播放</string>
     <string name="notification_stop_large">■  停止播放</string>
     <string name="notification_channel_name">晨间播报</string>

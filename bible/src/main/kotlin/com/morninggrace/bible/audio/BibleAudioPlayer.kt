@@ -33,7 +33,7 @@ class AndroidBibleAudioPlayer @Inject constructor(
             val finished = AtomicBoolean(false)
             val audioManager = context.getSystemService(AudioManager::class.java)
             val attributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                 .build()
             lateinit var focusRequest: AudioFocusRequest

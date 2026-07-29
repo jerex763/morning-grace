@@ -144,7 +144,7 @@ class BroadcastOrchestratorTest {
     }
 
     @Test
-    fun `news completes before Bible recording begins`() = runTest {
+    fun `Bible recording completes before final news begins`() = runTest {
         coEvery { bibleAudioPlayer.playChapter(any(), any()) } returns true
         coEvery { newsRepo.getTopHeadlines(3, false) } returns listOf(
             NewsHeadline(title = "新闻标题", summary = "新闻概述")
@@ -156,8 +156,8 @@ class BroadcastOrchestratorTest {
         )
 
         coVerifyOrder {
-            ttsEngine.speak("新闻概述", Language.ZH)
             bibleAudioPlayer.playChapter(any(), any())
+            ttsEngine.speak("新闻概述", Language.ZH)
         }
     }
 

@@ -42,7 +42,7 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
                 val current = tts
                 current?.setAudioAttributes(
                     AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                         .build()
                 )

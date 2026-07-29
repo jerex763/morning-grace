@@ -161,6 +161,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        volumeControlStream = AudioManager.STREAM_MUSIC
         setContentView(R.layout.activity_main)
         prefs = getSharedPreferences("alarm_prefs", MODE_PRIVATE)
         initializeDefaultReadingPlan()
@@ -369,10 +370,10 @@ class MainActivity : AppCompatActivity() {
         val batteryReady = getSystemService(PowerManager::class.java)
             .isIgnoringBatteryOptimizations(packageName)
         val audioManager = getSystemService(AudioManager::class.java)
-        val alarmVolumeReady = audioManager.getStreamVolume(AudioManager.STREAM_ALARM) > 0
+        val mediaVolumeReady = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) > 0
         val status = buildList {
             add(if (notificationReady) "✓ 通知栏停止按钮可用" else "⚠ 未允许通知，锁屏时看不到停止按钮")
-            add(if (alarmVolumeReady) "✓ 闹钟音量已开启" else "⚠ 闹钟音量为零，播报可能无声")
+            add(if (mediaVolumeReady) "✓ 播放音量已开启" else "⚠ 媒体音量为零，播报可能无声")
             add(if (batteryReady) "✓ 已允许后台持续播放" else "⚠ 请设置后台播放保护")
         }.joinToString("\n")
         findViewById<TextView>(R.id.systemReadinessStatus).text = status
@@ -386,7 +387,7 @@ class MainActivity : AppCompatActivity() {
                     "1. 允许忽略电池优化\n" +
                     "2. 在 OPPO 手机管家中允许“晨光”自启动和后台活动\n" +
                     "3. 不要在“一键清理”中关闭晨光\n" +
-                    "4. 确认闹钟音量不是零"
+                    "4. 确认媒体音量不是零；播放时可直接用音量键调整"
             )
             .setNegativeButton("稍后", null)
             .setPositiveButton("打开设置") { _, _ -> openBatteryOptimizationSettings() }
