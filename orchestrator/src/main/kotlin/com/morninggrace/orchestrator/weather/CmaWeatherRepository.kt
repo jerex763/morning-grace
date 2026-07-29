@@ -53,6 +53,7 @@ class CmaWeatherRepository @Inject constructor(
         }
 
     private suspend fun findStation(location: LocationPrefs): Station? {
+        if (!location.isWithinChina()) return BEIJING
         if (location.cityName == BEIJING.name &&
             location.lat == BEIJING_LAT &&
             location.lon == BEIJING_LON
@@ -101,7 +102,12 @@ class CmaWeatherRepository @Inject constructor(
         val nowData = nowBody?.let { JSONObject(it).optJSONObject("data") }
         val now = nowData?.optJSONObject("now") ?: return null
         val temperature = now.optDouble("temperature", Double.NaN)
-        if (temperature.isNaN()) return null
+        val humidity = now.optDouble("humidity", Double.NaN)
+        if (temperature.isNaN() || temperature !in -80.0..60.0 ||
+            humidity.isNaN() || humidity !in 0.0..100.0
+        ) {
+            return null
+        }
 
         val apiLocationName = nowData.optJSONObject("location")
             ?.optString("name")
@@ -109,11 +115,13 @@ class CmaWeatherRepository @Inject constructor(
             ?: station.name
         val description = forecastBody?.let(::currentDescription).orEmpty()
         val windMetersPerSecond = now.optDouble("windSpeed", 0.0)
+            .takeIf { it in 0.0..100.0 }
+            ?: 0.0
 
         return WeatherData(
             temperatureCelsius = temperature,
             weatherCode = -1,
-            humidity = now.optDouble("humidity", 0.0).toInt(),
+            humidity = humidity.toInt(),
             windSpeedKmh = windMetersPerSecond * 3.6,
             uvIndex = null,
             locationName = apiLocationName,
@@ -140,8 +148,15 @@ class CmaWeatherRepository @Inject constructor(
 
     private data class Station(val id: String, val name: String)
 
+    private fun LocationPrefs.isWithinChina(): Boolean =
+        lat in CHINA_MIN_LAT..CHINA_MAX_LAT && lon in CHINA_MIN_LON..CHINA_MAX_LON
+
     companion object {
         private const val BASE_URL = "https://weather.cma.cn"
+        private const val CHINA_MIN_LAT = 18.0
+        private const val CHINA_MAX_LAT = 54.0
+        private const val CHINA_MIN_LON = 73.0
+        private const val CHINA_MAX_LON = 135.0
         private const val BEIJING_LAT = 39.9042
         private const val BEIJING_LON = 116.4074
         private val BEIJING = Station("54511", "北京")

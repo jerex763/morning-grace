@@ -115,6 +115,44 @@ class CmaWeatherRepositoryTest {
     }
 
     @Test
+    fun `invalid CMA sentinel values fall back to Beijing`() = runTest {
+        every { mockClient.newCall(any()) } answers {
+            val request = firstArg<Request>()
+            val call = mockk<Call>(relaxed = true)
+            every { call.enqueue(any()) } answers {
+                val callback = firstArg<Callback>()
+                val json = when {
+                    request.url.encodedPath == "/api/map/weather/1" ->
+                        """{"data":{"city":[["59997","南沙","中国",0,10.38,114.37]]}}"""
+                    request.url.encodedPath == "/api/now/59997" ->
+                        """{"data":{"location":{"name":"南沙"},"now":{
+                          "temperature":9999,"humidity":9999,"windSpeed":9999
+                        }}}"""
+                    request.url.encodedPath == "/api/now/54511" -> nowJson
+                    else -> forecastJson
+                }
+                callback.onResponse(call, response(request, json))
+            }
+            call
+        }
+
+        val result = repo.getCurrentWeather(LocationPrefs(20.0, 114.0, "当前位置"))
+
+        assertEquals("北京", result?.locationName)
+        assertEquals(29.7, result?.temperatureCelsius)
+        assertEquals(77, result?.humidity)
+    }
+
+    @Test
+    fun `coordinates outside China use Beijing directly`() = runTest {
+        stubResponses()
+
+        val result = repo.getCurrentWeather(LocationPrefs(-33.88, 151.20, "当前位置"))
+
+        assertEquals("北京", result?.locationName)
+    }
+
+    @Test
     fun `returns null when weather request fails`() = runTest {
         every { mockClient.newCall(any()) } answers {
             val call = mockk<Call>(relaxed = true)

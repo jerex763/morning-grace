@@ -365,7 +365,9 @@ class MainActivity : AppCompatActivity() {
         val newsView = findViewById<TextView>(R.id.newsSummary)
         val cache = getSharedPreferences("home_summary_cache", MODE_PRIVATE)
 
-        weatherView.text = cache.getString("weather", "正在更新…")
+        weatherView.text = cache.getString("weather", null)
+            ?.takeUnless { it.contains("9999") }
+            ?: "正在更新…"
         newsView.text = cache.getString("news", "正在更新…")
 
         lifecycleScope.launch {
@@ -732,6 +734,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun saveLocatedCity(location: Location) {
         lifecycleScope.launch {
+            if (location.latitude !in 18.0..54.0 ||
+                location.longitude !in 73.0..135.0
+            ) {
+                useBeijingFallback("当前位置不在中国")
+                return@launch
+            }
             val cityName = withContext(Dispatchers.IO) {
                 resolveCityName(location.latitude, location.longitude)
             }
