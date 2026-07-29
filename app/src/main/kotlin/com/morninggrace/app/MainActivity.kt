@@ -14,7 +14,6 @@ import android.os.Bundle
 import android.provider.Settings
 import android.text.format.Formatter
 import android.view.View
-import android.view.inputmethod.EditorInfo
 import android.widget.LinearLayout
 import android.widget.NumberPicker
 import android.widget.RadioGroup
@@ -22,9 +21,6 @@ import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
-import com.google.android.material.textfield.TextInputEditText
-import com.morninggrace.ai.GeminiClient
-import com.morninggrace.ai.KEY_GEMINI_API_KEY
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -42,7 +38,6 @@ import com.morninggrace.bible.plan.SequentialPlan
 import com.morninggrace.bible.toChineseTitle
 import com.morninggrace.core.model.AlarmConfig
 import com.morninggrace.core.model.WeatherData
-import com.morninggrace.core.repository.FinanceRepository
 import com.morninggrace.core.repository.LocationRepository
 import com.morninggrace.core.repository.NewsRepository
 import com.morninggrace.core.repository.WeatherRepository
@@ -62,7 +57,6 @@ class MainActivity : AppCompatActivity() {
     @Inject lateinit var locationRepo: LocationRepository
     @Inject lateinit var readingPlan: DynamicBibleReadingPlan
     @Inject lateinit var weatherRepo: WeatherRepository
-    @Inject lateinit var financeRepo: FinanceRepository
     @Inject lateinit var newsRepo: NewsRepository
     @Inject lateinit var bibleAudioLibrary: BibleAudioLibrary
 
@@ -82,10 +76,6 @@ class MainActivity : AppCompatActivity() {
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { /* silent */ }
-
-    private val recordAudioPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { /* silent — SpeechEngine falls back gracefully if denied */ }
 
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -124,7 +114,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         prefs = getSharedPreferences("alarm_prefs", MODE_PRIVATE)
         requestNotificationPermissionIfNeeded()
-        requestRecordAudioPermissionIfNeeded()
 
         val alarmSwitch = findViewById<SwitchMaterial>(R.id.alarmSwitch)
         val warning = findViewById<TextView>(R.id.permissionWarning)
@@ -174,7 +163,6 @@ class MainActivity : AppCompatActivity() {
 
         // Module toggles
         bindModuleCheckbox(R.id.moduleWeather, AlarmService.KEY_MODULE_WEATHER)
-        bindModuleCheckbox(R.id.moduleFinance, AlarmService.KEY_MODULE_FINANCE)
         bindModuleCheckbox(R.id.moduleNews,    AlarmService.KEY_MODULE_NEWS)
 
         // Bible checkbox + reading plan (plan visible only when Bible is enabled)
@@ -189,11 +177,11 @@ class MainActivity : AppCompatActivity() {
         val speechRateLabel = findViewById<TextView>(R.id.chineseSpeechRateLabel)
         val speechRate = findViewById<SeekBar>(R.id.chineseSpeechRate)
         moduleBible.isChecked = prefs.getBoolean(AlarmService.KEY_MODULE_BIBLE, true)
-        bibleEnglish.isChecked = prefs.getBoolean(AlarmService.KEY_BIBLE_ENGLISH, false)
+        bibleEnglish.isChecked = false
         bibleRecordedAudio.isChecked =
             prefs.getBoolean(AlarmService.KEY_BIBLE_RECORDED_AUDIO, true)
         planGroup.visibility  = if (moduleBible.isChecked) View.VISIBLE else View.GONE
-        bibleEnglish.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
+        bibleEnglish.visibility = View.GONE
         bibleRecordedAudio.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
         bibleAudioStatus.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
         importBibleAudioButton.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
@@ -204,7 +192,7 @@ class MainActivity : AppCompatActivity() {
         moduleBible.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean(AlarmService.KEY_MODULE_BIBLE, checked).apply()
             planGroup.visibility = if (checked) View.VISIBLE else View.GONE
-            bibleEnglish.visibility = if (checked) View.VISIBLE else View.GONE
+            bibleEnglish.visibility = View.GONE
             bibleRecordedAudio.visibility = if (checked) View.VISIBLE else View.GONE
             bibleAudioStatus.visibility = if (checked) View.VISIBLE else View.GONE
             importBibleAudioButton.visibility = if (checked) View.VISIBLE else View.GONE
@@ -245,19 +233,6 @@ class MainActivity : AppCompatActivity() {
         bindBibleProgressControls()
         bindChineseSpeechRate(speechRate, speechRateLabel)
 
-        // AI: Gemini API key
-        val aiPrefs = getSharedPreferences("ai_prefs", MODE_PRIVATE)
-        val apiKeyInput = findViewById<TextInputEditText>(R.id.geminiApiKeyInput)
-        apiKeyInput.setText(aiPrefs.getString(KEY_GEMINI_API_KEY, ""))
-        apiKeyInput.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_DONE) {
-                saveApiKey(aiPrefs, apiKeyInput); true
-            } else false
-        }
-        findViewById<MaterialButton>(R.id.saveApiKeyButton).setOnClickListener {
-            saveApiKey(aiPrefs, apiKeyInput)
-        }
-
         // Dev: test broadcast (uses current module prefs)
         findViewById<MaterialButton>(R.id.testBroadcastButton).setOnClickListener {
             ContextCompat.startForegroundService(this, Intent(this, AlarmService::class.java))
@@ -291,14 +266,6 @@ class MainActivity : AppCompatActivity() {
         updateBibleProgress()
     }
 
-    private fun saveApiKey(prefs: android.content.SharedPreferences, input: TextInputEditText) {
-        val key = input.text?.toString()?.trim() ?: ""
-        prefs.edit().putString(KEY_GEMINI_API_KEY, key).apply()
-        input.clearFocus()
-        val imm = getSystemService(android.view.inputmethod.InputMethodManager::class.java)
-        imm.hideSoftInputFromWindow(input.windowToken, 0)
-    }
-
     private fun bindModuleCheckbox(viewId: Int, prefKey: String) {
         val checkbox = findViewById<SwitchMaterial>(viewId)
         checkbox.isChecked = prefs.getBoolean(prefKey, true)
@@ -321,12 +288,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshHomeSummaries() {
         val weatherView = findViewById<TextView>(R.id.weatherSummary)
-        val financeView = findViewById<TextView>(R.id.financeSummary)
         val newsView = findViewById<TextView>(R.id.newsSummary)
         val cache = getSharedPreferences("home_summary_cache", MODE_PRIVATE)
 
         weatherView.text = cache.getString("weather", "正在更新…")
-        financeView.text = cache.getString("finance", "正在更新…")
         newsView.text = cache.getString("news", "正在更新…")
 
         lifecycleScope.launch {
@@ -334,8 +299,7 @@ class MainActivity : AppCompatActivity() {
             val weatherJob = async {
                 weatherRepo.getCurrentWeather(location.lat, location.lon)
             }
-            val financeJob = async { financeRepo.getMarketData() }
-            val newsJob = async { newsRepo.getTopHeadlines(1) }
+            val newsJob = async { newsRepo.getTopHeadlines(3) }
 
             weatherJob.await()?.let { weather ->
                 val summary = "${weather.temperatureCelsius.toInt()}°  ${weather.shortDescription()}\n" +
@@ -348,21 +312,11 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            val markets = financeJob.await()
-            if (markets.isNotEmpty()) {
-                val summary = markets.take(2).joinToString("\n") {
-                    val sign = if (it.changePercent >= 0) "+" else ""
-                    "${it.indexName} $sign${"%.2f".format(it.changePercent)}%"
-                }
-                financeView.text = summary
-                cache.edit().putString("finance", summary).apply()
-            } else if (cache.getString("finance", null) == null) {
-                financeView.text = "行情暂时\n无法获取"
-            }
-
             val headlines = newsJob.await()
             if (headlines.isNotEmpty()) {
-                val summary = headlines.first().title
+                val summary = headlines.take(3).mapIndexed { index, item ->
+                    "${index + 1}. ${item.title}"
+                }.joinToString("\n")
                 newsView.text = summary
                 cache.edit().putString("news", summary).apply()
             } else if (cache.getString("news", null) == null) {
@@ -661,14 +615,6 @@ class MainActivity : AppCompatActivity() {
             "📍 %.4f, %.4f".format(loc.lat, loc.lon)
         } else {
             "未设置（默认：悉尼）"
-        }
-    }
-
-    private fun requestRecordAudioPermissionIfNeeded() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
 

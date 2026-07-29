@@ -12,7 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingBottom="32dp">
+        android:paddingBottom="40dp">
 
         <TextView
             android:id="@+id/networkBanner"
@@ -20,153 +20,119 @@
             android:layout_height="wrap_content"
             android:background="@color/warning"
             android:gravity="center"
-            android:padding="8dp"
-            android:text="无网络连接，摘要将使用上次内容"
+            android:padding="12dp"
+            android:text="现在没有网络，将使用上次更新的内容"
             android:textColor="#FFFFFF"
-            android:textSize="12sp"
+            android:textSize="17sp"
+            android:textStyle="bold"
             android:visibility="gone" />
 
-        <FrameLayout
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="286dp"
-            android:background="@drawable/bg_morning_hero"
-            android:paddingHorizontal="24dp"
-            android:paddingTop="28dp">
-
-            <View
-                android:layout_width="76dp"
-                android:layout_height="76dp"
-                android:layout_gravity="top|end"
-                android:layout_marginEnd="34dp"
-                android:layout_marginTop="56dp"
-                android:background="@drawable/bg_sun" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom|end"
-                android:layout_marginBottom="22dp"
-                android:text="⌁  ︿  ⌁"
-                android:textColor="#B99162"
-                android:textSize="18sp" />
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="24dp"
+            android:paddingTop="22dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="10dp">
 
             <LinearLayout
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:orientation="vertical">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:fontFamily="serif"
-                        android:text="晨光"
-                        android:textColor="@color/accent_dark"
-                        android:textSize="42sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/settingsButton"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:background="@drawable/bg_round_outline"
-                        android:clickable="true"
-                        android:contentDescription="打开播报设置"
-                        android:focusable="true"
-                        android:gravity="center"
-                        android:text="⚙"
-                        android:textColor="@color/text_label"
-                        android:textSize="24sp" />
-                </LinearLayout>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="-4dp"
-                    android:fontFamily="serif"
-                    android:text="愿你的早晨有光，心中有望。"
-                    android:textColor="@color/text_label"
-                    android:textSize="17sp" />
+                    android:fontFamily="sans-serif"
+                    android:text="早上好"
+                    android:textColor="@color/accent_dark"
+                    android:textSize="34sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/dateDisplay"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:fontFamily="serif"
-                    android:text="2026年7月20日  星期一"
+                    android:layout_marginTop="4dp"
+                    android:text="2026年7月29日  星期三"
                     android:textColor="@color/text_primary"
-                    android:textSize="15sp" />
-
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="208dp"
-                    android:layout_height="76dp"
-                    android:layout_marginTop="16dp"
-                    app:cardBackgroundColor="#EFFFFFFF"
-                    app:cardCornerRadius="20dp"
-                    app:cardElevation="3dp"
-                    app:strokeColor="#D9C3A7"
-                    app:strokeWidth="1dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="14dp">
-
-                        <TextView
-                            android:layout_width="44dp"
-                            android:layout_height="44dp"
-                            android:background="@drawable/bg_icon_rust"
-                            android:gravity="center"
-                            android:text="◷"
-                            android:textColor="#FFFFFF"
-                            android:textSize="25sp" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="10dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="下次播报"
-                                android:textColor="@color/text_label"
-                                android:textSize="12sp" />
-
-                            <TextView
-                                android:id="@+id/timeDisplay"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:background="?attr/selectableItemBackgroundBorderless"
-                                android:clickable="true"
-                                android:focusable="true"
-                                android:fontFamily="serif"
-                                android:text="06:00"
-                                android:textColor="@color/accent_dark"
-                                android:textSize="25sp" />
-                        </LinearLayout>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="●"
-                            android:textColor="@color/olive"
-                            android:textSize="12sp" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
+                    android:textSize="19sp" />
             </LinearLayout>
-        </FrameLayout>
+
+            <TextView
+                android:id="@+id/settingsButton"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:background="@drawable/bg_round_outline"
+                android:clickable="true"
+                android:contentDescription="打开设置"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="设置"
+                android:textColor="@color/accent_dark"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="18dp"
+            android:layout_marginTop="8dp"
+            app:cardBackgroundColor="@color/bg_reading"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp"
+            app:strokeColor="#D8C5AC"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="20dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="每天自动播放"
+                        android:textColor="@color/text_primary"
+                        android:textSize="20sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/timeDisplay"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:clickable="true"
+                        android:contentDescription="修改每天播放时间"
+                        android:focusable="true"
+                        android:text="06:00"
+                        android:textColor="@color/accent_dark"
+                        android:textSize="38sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/alarmSwitch"
+                    android:layout_width="72dp"
+                    android:layout_height="64dp"
+                    android:contentDescription="开启或关闭每天自动播放"
+                    app:switchMinWidth="64dp"
+                    app:useMaterialThemeColors="true" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <TextView
             android:id="@+id/permissionWarning"
@@ -175,19 +141,34 @@
             android:layout_marginHorizontal="22dp"
             android:layout_marginTop="8dp"
             android:gravity="center"
-            android:text="需要精确闹钟权限"
+            android:text="请允许精确闹钟，才能准时自动播放"
             android:textColor="@color/warning"
-            android:textSize="12sp"
+            android:textSize="17sp"
+            android:textStyle="bold"
             android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/testBroadcastButton"
+            android:layout_width="match_parent"
+            android:layout_height="86dp"
+            android:layout_marginHorizontal="18dp"
+            android:layout_marginTop="18dp"
+            android:contentDescription="开始今天的晨间播报"
+            android:text="▶  开始今天的播报"
+            android:textAllCaps="false"
+            android:textSize="23sp"
+            android:textStyle="bold"
+            app:backgroundTint="@color/accent_dark"
+            app:cornerRadius="24dp" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="20dp"
-            android:layout_marginTop="16dp"
+            android:layout_marginHorizontal="18dp"
+            android:layout_marginTop="18dp"
             app:cardBackgroundColor="@color/bg_card"
             app:cardCornerRadius="24dp"
-            app:cardElevation="3dp"
+            app:cardElevation="2dp"
             app:strokeColor="@color/card_stroke"
             app:strokeWidth="1dp">
 
@@ -195,69 +176,62 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingTop="18dp"
-                android:paddingBottom="8dp">
+                android:paddingTop="20dp"
+                android:paddingBottom="12dp">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:fontFamily="serif"
-                    android:gravity="center"
-                    android:text="—  今日读经  —"
-                    android:textColor="@color/text_label"
-                    android:textSize="20sp" />
+                    android:paddingHorizontal="22dp"
+                    android:text="今天读什么"
+                    android:textColor="@color/text_primary"
+                    android:textSize="25sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/biblePlanSelector"
                     android:layout_width="wrap_content"
-                    android:layout_height="44dp"
-                    android:layout_gravity="center"
+                    android:layout_height="56dp"
+                    android:layout_marginStart="14dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
                     android:focusable="true"
-                    android:gravity="center"
-                    android:paddingHorizontal="16dp"
-                    android:text="麦大卫一年读经  ⌄"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="10dp"
+                    android:text="麦大卫一年读经  ▼"
                     android:textColor="@color/accent_dark"
-                    android:textSize="14sp"
+                    android:textSize="18sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/bibleProgress"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:fontFamily="serif"
-                    android:gravity="center"
-                    android:paddingVertical="4dp"
-                    android:text="第 204 / 365 天"
-                    android:textColor="@color/accent_dark"
-                    android:textSize="34sp" />
-
-                <View
-                    android:layout_width="160dp"
-                    android:layout_height="1dp"
-                    android:layout_gravity="center"
-                    android:layout_marginTop="6dp"
-                    android:layout_marginBottom="8dp"
-                    android:background="@color/gold_soft" />
+                    android:paddingHorizontal="22dp"
+                    android:paddingTop="4dp"
+                    android:text="第 201 / 365 天"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="18sp" />
 
                 <TextView
                     android:id="@+id/bibleReadingPreview"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:fontFamily="serif"
-                    android:lineSpacingExtra="7dp"
-                    android:paddingHorizontal="24dp"
-                    android:paddingVertical="8dp"
-                    android:text="1  约书亚记第十七章&#10;2  箴言第十二章&#10;3  约翰福音第十九章&#10;4  腓立比书第四章"
+                    android:lineSpacingExtra="10dp"
+                    android:paddingHorizontal="22dp"
+                    android:paddingTop="14dp"
+                    android:paddingBottom="12dp"
+                    android:text="1. 创世记第一章&#10;2. 马太福音第一章"
                     android:textColor="@color/text_primary"
-                    android:textSize="17sp" />
+                    android:textSize="23sp"
+                    android:textStyle="bold" />
 
                 <LinearLayout
                     android:id="@+id/bibleProgressRow"
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginTop="6dp"
+                    android:layout_height="64dp"
+                    android:layout_marginHorizontal="12dp"
+                    android:layout_marginTop="4dp"
                     android:background="@drawable/bg_day_navigation"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
@@ -266,252 +240,126 @@
                         android:id="@+id/biblePreviousDay"
                         style="@style/Widget.Material3.Button.TextButton"
                         android:layout_width="0dp"
-                        android:layout_height="48dp"
+                        android:layout_height="64dp"
                         android:layout_weight="1"
-                        android:contentDescription="上一个计划日"
+                        android:contentDescription="查看前一天"
                         android:text="‹  前一天"
                         android:textColor="@color/text_label"
-                        android:textSize="14sp" />
+                        android:textSize="18sp" />
 
                     <TextView
                         android:id="@+id/bibleDayPickerButton"
-                        android:layout_width="40dp"
-                        android:layout_height="48dp"
+                        android:layout_width="72dp"
+                        android:layout_height="64dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:clickable="true"
                         android:contentDescription="选择计划日"
                         android:focusable="true"
                         android:gravity="center"
-                        android:text="▣"
-                        android:textColor="@color/text_label"
-                        android:textSize="16sp" />
+                        android:text="选天数"
+                        android:textColor="@color/accent_dark"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/bibleNextDay"
                         style="@style/Widget.Material3.Button.TextButton"
                         android:layout_width="0dp"
-                        android:layout_height="48dp"
+                        android:layout_height="64dp"
                         android:layout_weight="1"
-                        android:contentDescription="下一个计划日"
+                        android:contentDescription="查看后一天"
                         android:text="后一天  ›"
                         android:textColor="@color/text_label"
-                        android:textSize="14sp" />
+                        android:textSize="18sp" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/testBroadcastButton"
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
-            android:layout_height="76dp"
-            android:layout_marginHorizontal="20dp"
-            android:layout_marginTop="14dp"
-            android:text="开始晨间播报"
-            android:textAllCaps="false"
-            android:textSize="16sp"
-            app:backgroundTint="@color/accent_dark"
-            app:cornerRadius="18dp"
-            app:icon="@android:drawable/ic_btn_speak_now"
-            app:iconGravity="textStart"
-            app:iconTint="#FFFFFF" />
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="18dp"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="#EDF3E7"
+            app:cardCornerRadius="22dp"
+            app:cardElevation="0dp">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="128dp"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="14dp"
-            android:baselineAligned="false"
-            android:orientation="horizontal">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="20dp">
 
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_marginHorizontal="4dp"
-                android:layout_weight="1"
-                app:cardBackgroundColor="@color/bg_card"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="2dp"
-                app:strokeColor="@color/card_stroke"
-                app:strokeWidth="1dp">
+                <TextView
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:gravity="center"
+                    android:text="☀"
+                    android:textColor="@color/olive"
+                    android:textSize="38sp" />
 
                 <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    android:padding="8dp">
-
-                    <TextView
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:background="@drawable/bg_icon_olive"
-                        android:gravity="center"
-                        android:text="☁︎"
-                        android:textColor="#FFFFFF"
-                        android:textSize="20sp" />
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:fontFamily="serif"
-                        android:text="天气"
+                        android:text="今天的天气"
                         android:textColor="@color/text_primary"
-                        android:textSize="15sp" />
+                        android:textSize="21sp"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/weatherSummary"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:ellipsize="end"
-                        android:gravity="center"
-                        android:maxLines="2"
+                        android:layout_marginTop="5dp"
                         android:text="正在更新…"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="11sp" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_marginHorizontal="4dp"
-                android:layout_weight="1"
-                app:cardBackgroundColor="@color/bg_card"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="2dp"
-                app:strokeColor="@color/card_stroke"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    android:padding="8dp">
-
-                    <TextView
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:background="@drawable/bg_icon_rust"
-                        android:gravity="center"
-                        android:text="↗"
-                        android:textColor="#FFFFFF"
-                        android:textSize="20sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:fontFamily="serif"
-                        android:text="财经"
                         android:textColor="@color/text_primary"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:id="@+id/financeSummary"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:ellipsize="end"
-                        android:gravity="center"
-                        android:maxLines="2"
-                        android:text="正在更新…"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="11sp" />
+                        android:textSize="21sp" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_marginHorizontal="4dp"
-                android:layout_weight="1"
-                app:cardBackgroundColor="@color/bg_card"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="2dp"
-                app:strokeColor="@color/card_stroke"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    android:padding="8dp">
-
-                    <TextView
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:background="@drawable/bg_icon_olive"
-                        android:gravity="center"
-                        android:text="▤"
-                        android:textColor="#FFFFFF"
-                        android:textSize="18sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:fontFamily="serif"
-                        android:text="新闻"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:id="@+id/newsSummary"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:ellipsize="end"
-                        android:gravity="center"
-                        android:maxLines="2"
-                        android:text="正在更新…"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="11sp" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-        </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="20dp"
-            android:layout_marginTop="14dp"
-            app:cardBackgroundColor="@color/bg_reading"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="0dp"
+            android:layout_marginHorizontal="18dp"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/bg_card"
+            app:cardCornerRadius="22dp"
+            app:cardElevation="1dp"
             app:strokeColor="@color/card_stroke"
             app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:clipChildren="false"
-                android:clipToPadding="false"
-                android:orientation="horizontal"
-                android:paddingStart="18dp"
-                android:paddingTop="18dp"
-                android:paddingEnd="18dp"
-                android:paddingBottom="28dp">
+                android:orientation="vertical"
+                android:padding="20dp">
 
                 <TextView
-                    android:layout_width="48dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:text="❝"
-                    android:textColor="@color/gold"
-                    android:textSize="30sp" />
+                    android:text="今日三条要闻"
+                    android:textColor="@color/text_primary"
+                    android:textSize="23sp"
+                    android:textStyle="bold" />
 
                 <TextView
-                    android:layout_width="0dp"
+                    android:id="@+id/newsSummary"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:includeFontPadding="true"
-                    android:fontFamily="serif"
-                    android:lineSpacingExtra="5dp"
-                    android:paddingBottom="6dp"
-                    android:text="这正是我所喜悦的：要怜悯，不是祭祀；认识神，胜于燔祭。&#10;—— 何西阿书 6:6"
-                    android:textColor="@color/text_label"
-                    android:textSize="15sp" />
+                    android:layout_marginTop="10dp"
+                    android:lineSpacingExtra="8dp"
+                    android:text="正在更新…"
+                    android:textColor="@color/text_primary"
+                    android:textSize="19sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -519,37 +367,29 @@
             android:id="@+id/settingsPanel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="20dp"
-            android:layout_marginTop="16dp"
+            android:layout_marginHorizontal="18dp"
+            android:layout_marginTop="18dp"
             android:background="@drawable/bg_settings_panel"
             android:orientation="vertical"
-            android:padding="18dp"
+            android:padding="20dp"
             android:visibility="gone">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="serif"
-                android:text="播报设置"
+                android:text="设置"
                 android:textColor="@color/text_primary"
-                android:textSize="22sp"
+                android:textSize="27sp"
                 android:textStyle="bold" />
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/alarmSwitch"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="启用每日晨间闹钟"
-                android:textColor="@color/text_label"
-                app:useMaterialThemeColors="true" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/moduleBible"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="64dp"
                 android:checked="true"
-                android:text="圣经读经"
-                android:textColor="@color/text_label"
+                android:text="播放圣经"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
                 app:useMaterialThemeColors="true" />
 
             <RadioGroup
@@ -560,167 +400,119 @@
 
                 <RadioButton
                     android:id="@+id/planMcCheyne"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
                     android:text="麦大卫一年读经"
-                    android:textColor="@color/text_label" />
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp" />
 
                 <RadioButton
                     android:id="@+id/planSequential"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="顺序读经（创世记 → 启示录）"
-                    android:textColor="@color/text_label" />
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="顺序读经"
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp" />
 
                 <RadioButton
                     android:id="@+id/planChapterADay"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
                     android:text="每天三章"
-                    android:textColor="@color/text_label" />
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp" />
             </RadioGroup>
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/bibleEnglish"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="同时播报英文经文"
-                android:textColor="@color/text_secondary"
-                app:useMaterialThemeColors="true" />
-
-            <TextView
-                android:id="@+id/chineseSpeechRateLabel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="中文语速：自然（0.88×）"
-                android:textColor="@color/text_secondary"
-                android:textSize="13sp" />
-
-            <SeekBar
-                android:id="@+id/chineseSpeechRate"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:max="50"
-                android:progress="18" />
+                android:layout_height="0dp"
+                android:visibility="gone" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/bibleRecordedAudio"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="64dp"
                 android:checked="true"
-                android:text="优先使用真人圣经录音"
-                android:textColor="@color/text_label"
+                android:text="使用真人圣经朗读"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
                 app:useMaterialThemeColors="true" />
 
             <TextView
                 android:id="@+id/bibleAudioStatus"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="尚未导入真人录音；播报会使用中文系统语音"
+                android:text="真人录音已准备"
                 android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
+                android:textSize="17sp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/importBibleAudioButton"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:layout_marginTop="8dp"
+                android:text="导入真人圣经录音"
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/chineseSpeechRateLabel"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="导入音频 ZIP（可多选）"
-                app:icon="@android:drawable/ic_menu_upload" />
+                android:layout_marginTop="16dp"
+                android:text="播报速度：自然"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp" />
+
+            <SeekBar
+                android:id="@+id/chineseSpeechRate"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:max="50"
+                android:progress="18" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/moduleWeather"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="64dp"
                 android:checked="true"
-                android:text="天气播报"
-                android:textColor="@color/text_label"
-                app:useMaterialThemeColors="true" />
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/moduleFinance"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                android:text="财经行情"
-                android:textColor="@color/text_label"
+                android:text="播放天气"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
                 app:useMaterialThemeColors="true" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/moduleNews"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="64dp"
                 android:checked="true"
-                android:text="新闻头条"
-                android:textColor="@color/text_label"
+                android:text="播放三条新闻"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
                 app:useMaterialThemeColors="true" />
 
             <TextView
                 android:id="@+id/locationStatus"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="位置未设置"
+                android:layout_marginTop="10dp"
+                android:text="天气位置未设置"
                 android:textColor="@color/text_secondary"
-                android:textSize="13sp" />
+                android:textSize="17sp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/locationButton"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="更新天气位置"
-                app:icon="@android:drawable/ic_menu_mylocation" />
-
-            <TextView
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:fontFamily="serif"
-                android:text="AI 语音对话 · 可选"
-                android:textColor="@color/text_primary"
-                android:textSize="17sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
-                android:layout_marginBottom="8dp"
-                android:text="不填写不影响晨间播报。"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
-
-            <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Gemini API Key">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/geminiApiKeyInput"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:imeOptions="actionDone"
-                    android:inputType="textPassword"
-                    android:textSize="13sp" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/saveApiKeyButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="60dp"
                 android:layout_marginTop="8dp"
-                android:text="保存 Key"
-                app:backgroundTint="@color/accent" />
+                android:text="更新天气位置"
+                android:textSize="18sp" />
         </LinearLayout>
 
-        <!-- Keep the final card and its last line above gesture/navigation insets. -->
         <Space
             android:layout_width="match_parent"
-            android:layout_height="56dp" />
+            android:layout_height="48dp" />
     </LinearLayout>
 </ScrollView>
