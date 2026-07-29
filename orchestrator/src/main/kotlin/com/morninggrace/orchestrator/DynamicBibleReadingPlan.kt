@@ -23,14 +23,15 @@ class DynamicBibleReadingPlan @Inject constructor(
     private val current: BibleReadingPlan
         get() {
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            val id = prefs.getString(KEY, ID_MCCHEYNE)
+            val id = prefs.getString(KEY, ID_CHAPTER_A_DAY)
             return when (id) {
+                ID_MCCHEYNE       -> mcCheyne
                 ID_SEQUENTIAL   -> sequential
                 ID_CHAPTER_A_DAY -> ChapterADayPlan(
                     startBook = prefs.getInt(KEY_CHAPTER_A_DAY_BOOK, 1),
                     startChapter = prefs.getInt(KEY_CHAPTER_A_DAY_CHAPTER, 1)
                 )
-                else            -> mcCheyne
+                else            -> chapterADay
             }
         }
 

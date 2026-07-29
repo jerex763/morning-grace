@@ -29,14 +29,14 @@ class DynamicBibleReadingPlanTest {
 
     @Before
     fun setUp() {
-        // Default: no preference set → falls back to McCheyne
+        // Default: no preference set → starts the senior-friendly three-chapter plan.
         every { prefs.getString(DynamicBibleReadingPlan.KEY, any()) } returns null
         every { prefs.getInt(any(), any()) } answers { secondArg() }
         every { prefs.contains(any()) } returns false
     }
 
-    @Test fun `defaults to McCheyne when no preference set`() {
-        assertEquals(DynamicBibleReadingPlan.ID_MCCHEYNE, plan.id)
+    @Test fun `defaults to chapter-a-day when no preference set`() {
+        assertEquals(DynamicBibleReadingPlan.ID_CHAPTER_A_DAY, plan.id)
     }
 
     @Test fun `selects sequential plan`() {
@@ -49,9 +49,9 @@ class DynamicBibleReadingPlanTest {
         assertEquals(DynamicBibleReadingPlan.ID_CHAPTER_A_DAY, plan.id)
     }
 
-    @Test fun `unknown preference falls back to McCheyne`() {
+    @Test fun `unknown preference falls back to chapter-a-day`() {
         every { prefs.getString(DynamicBibleReadingPlan.KEY, any()) } returns "bogus_plan"
-        assertEquals(DynamicBibleReadingPlan.ID_MCCHEYNE, plan.id)
+        assertEquals(DynamicBibleReadingPlan.ID_CHAPTER_A_DAY, plan.id)
     }
 
     @Test fun `McCheyne returns 4 passages per day`() {

@@ -134,6 +134,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         prefs = getSharedPreferences("alarm_prefs", MODE_PRIVATE)
+        initializeDefaultReadingPlan()
         val waitingForNotificationPermission = requestNotificationPermissionIfNeeded()
 
         val alarmSwitch = findViewById<SwitchMaterial>(R.id.alarmSwitch)
@@ -190,7 +191,8 @@ class MainActivity : AppCompatActivity() {
         bindModuleCheckbox(R.id.moduleNews,    AlarmService.KEY_MODULE_NEWS)
         bindModuleCheckbox(R.id.newsFullArticles, AlarmService.KEY_NEWS_FULL_ARTICLES, false)
 
-        // Bible checkbox + reading plan (plan visible only when Bible is enabled)
+        // Bible broadcast settings. The home reading preview remains visible even
+        // when Bible audio is excluded from the scheduled broadcast.
         val moduleBible = findViewById<SwitchMaterial>(R.id.moduleBible)
         val planGroup   = findViewById<RadioGroup>(R.id.planRadioGroup)
         val bibleEnglish = findViewById<SwitchMaterial>(R.id.bibleEnglish)
@@ -210,8 +212,8 @@ class MainActivity : AppCompatActivity() {
         bibleRecordedAudio.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
         bibleAudioStatus.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
         importBibleAudioButton.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
-        progressRow.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
-        readingPreview.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
+        progressRow.visibility = View.VISIBLE
+        readingPreview.visibility = View.VISIBLE
         speechRateLabel.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
         speechRate.visibility = if (moduleBible.isChecked) View.VISIBLE else View.GONE
         moduleBible.setOnCheckedChangeListener { _, checked ->
@@ -221,8 +223,8 @@ class MainActivity : AppCompatActivity() {
             bibleRecordedAudio.visibility = if (checked) View.VISIBLE else View.GONE
             bibleAudioStatus.visibility = if (checked) View.VISIBLE else View.GONE
             importBibleAudioButton.visibility = if (checked) View.VISIBLE else View.GONE
-            progressRow.visibility = if (checked) View.VISIBLE else View.GONE
-            readingPreview.visibility = if (checked) View.VISIBLE else View.GONE
+            progressRow.visibility = View.VISIBLE
+            readingPreview.visibility = View.VISIBLE
             speechRateLabel.visibility = if (checked) View.VISIBLE else View.GONE
             speechRate.visibility = if (checked) View.VISIBLE else View.GONE
         }
@@ -236,7 +238,10 @@ class MainActivity : AppCompatActivity() {
             bibleAudioImportLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed"))
         }
         updateBibleAudioStatus()
-        val savedPlan = prefs.getString(DynamicBibleReadingPlan.KEY, DynamicBibleReadingPlan.ID_MCCHEYNE)
+        val savedPlan = prefs.getString(
+            DynamicBibleReadingPlan.KEY,
+            DynamicBibleReadingPlan.ID_CHAPTER_A_DAY
+        )
         planGroup.check(when (savedPlan) {
             DynamicBibleReadingPlan.ID_SEQUENTIAL    -> R.id.planSequential
             DynamicBibleReadingPlan.ID_CHAPTER_A_DAY -> R.id.planChapterADay
@@ -489,7 +494,7 @@ class MainActivity : AppCompatActivity() {
             )
             val currentId = prefs.getString(
                 DynamicBibleReadingPlan.KEY,
-                DynamicBibleReadingPlan.ID_MCCHEYNE
+                DynamicBibleReadingPlan.ID_CHAPTER_A_DAY
             )
             val checkedIndex = planIds.indexOf(currentId).coerceAtLeast(0)
 
@@ -554,7 +559,7 @@ class MainActivity : AppCompatActivity() {
         val today = LocalDate.now()
         val planName = when (prefs.getString(
             DynamicBibleReadingPlan.KEY,
-            DynamicBibleReadingPlan.ID_MCCHEYNE
+            DynamicBibleReadingPlan.ID_CHAPTER_A_DAY
         )) {
             DynamicBibleReadingPlan.ID_SEQUENTIAL -> "顺序读经（创世记 → 启示录）"
             DynamicBibleReadingPlan.ID_CHAPTER_A_DAY -> {
@@ -581,6 +586,20 @@ class MainActivity : AppCompatActivity() {
             } else {
                 "真人录音：${stats.chapterCount} / ${BibleAudioLibrary.TOTAL_BIBLE_CHAPTERS} 章 · $size"
             }
+    }
+
+    private fun initializeDefaultReadingPlan() {
+        if (prefs.contains(DynamicBibleReadingPlan.KEY)) return
+
+        prefs.edit()
+            .putString(
+                DynamicBibleReadingPlan.KEY,
+                DynamicBibleReadingPlan.ID_CHAPTER_A_DAY
+            )
+            .putInt(DynamicBibleReadingPlan.KEY_CHAPTER_A_DAY_BOOK, 1)
+            .putInt(DynamicBibleReadingPlan.KEY_CHAPTER_A_DAY_CHAPTER, 1)
+            .apply()
+        readingPlan.setCurrentDay(1, LocalDate.now())
     }
 
     private fun bindChineseSpeechRate(seekBar: SeekBar, label: TextView) {
