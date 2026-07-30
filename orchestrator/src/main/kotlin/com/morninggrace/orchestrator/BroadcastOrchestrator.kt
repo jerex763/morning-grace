@@ -23,6 +23,8 @@ import kotlinx.coroutines.delay
 private const val TAG = "MorningGrace"
 private const val MAX_TTS_CHUNK = 2_800
 
+class NoAudibleOutputException(message: String) : IllegalStateException(message)
+
 class BroadcastOrchestrator @Inject constructor(
     private val ttsEngine: TtsEngine,
     private val bibleAudioPlayer: BibleAudioPlayer,
@@ -134,37 +136,42 @@ class BroadcastOrchestrator @Inject constructor(
     }
 
     private suspend fun deliver(content: BroadcastContent, config: BroadcastConfig) {
-        safeSpeak(content.greeting, Language.ZH)
+        val diagnostics = OutputDiagnostics()
+        safeSpeak(content.greeting, Language.ZH, diagnostics)
 
         if (config.offline) {
-            safeSpeak("当前没有网络，今天跳过天气和新闻。", Language.ZH)
+            safeSpeak("当前没有网络，今天跳过天气和新闻。", Language.ZH, diagnostics)
         }
 
         if (!config.skipWeather) {
-            safeSpeak(content.weather, Language.ZH)
+            safeSpeak(content.weather, Language.ZH, diagnostics)
         }
 
         // Elder-friendly flow: weather continues directly into the day's reading.
         if (!config.skipBible && content.passages.isNotEmpty()) {
-            safeSpeak("今天读经是${content.passageName}。现在开始读经。", Language.ZH)
+            safeSpeak(
+                "今天读经是${content.passageName}。现在开始读经。",
+                Language.ZH,
+                diagnostics
+            )
             for (passage in content.passages) {
-                safeSpeak("现在读${passage.titleZh}。", Language.ZH)
+                safeSpeak("现在读${passage.titleZh}。", Language.ZH, diagnostics)
                 val playedRecording = config.preferRecordedBible &&
                     passage.isWholeChapter &&
-                    safePlayRecordedChapter(passage.book, passage.chapter)
+                    safePlayRecordedChapter(passage.book, passage.chapter, diagnostics)
                 if (!playedRecording) {
-                    safeSpeakLong(passage.zh, Language.ZH)
+                    safeSpeakLong(passage.zh, Language.ZH, diagnostics)
                 }
                 if (config.includeEnglishBible && passage.en.isNotBlank()) {
-                    safeSpeakLong(passage.en, Language.EN)
+                    safeSpeakLong(passage.en, Language.EN, diagnostics)
                 }
             }
-            safeSpeak("今日读经结束。", Language.ZH)
+            safeSpeak("今日读经结束。", Language.ZH, diagnostics)
         }
 
         if (!config.skipNews) {
             if (content.news.isEmpty()) {
-                safeSpeak("今日新闻暂时无法获取。", Language.ZH)
+                safeSpeak("今日新闻暂时无法获取。", Language.ZH, diagnostics)
             } else {
                 safeSpeak(
                     if (config.newsFullArticles) {
@@ -172,22 +179,35 @@ class BroadcastOrchestrator @Inject constructor(
                     } else {
                         "最后播报今日三条要闻概述。"
                     },
-                    Language.ZH
+                    Language.ZH,
+                    diagnostics
                 )
                 val ordinalNames = arrayOf("第一条", "第二条", "第三条")
                 content.news.forEachIndexed { index, item ->
                     val ordinal = ordinalNames.getOrElse(index) { "下一条" }
-                    safeSpeak("$ordinal，${item.title}。", Language.ZH)
-                    safeSpeakLong(item.content, Language.ZH)
+                    safeSpeak("$ordinal，${item.title}。", Language.ZH, diagnostics)
+                    safeSpeakLong(item.content, Language.ZH, diagnostics)
                 }
             }
         }
 
-        safeSpeak("晨光播报结束，愿你今天蒙福。", Language.ZH)
+        safeSpeak("晨光播报结束，愿你今天蒙福。", Language.ZH, diagnostics)
+        if (diagnostics.successfulOutputs == 0) {
+            val details = diagnostics.failures.distinct().take(4)
+                .joinToString("\n")
+                .ifBlank { "系统没有返回具体错误" }
+            throw NoAudibleOutputException(
+                "没有任何内容成功播放。\n$details"
+            )
+        }
     }
 
-    private suspend fun safeSpeakLong(text: String, language: Language) {
-        splitForTts(text).forEach { safeSpeak(it, language) }
+    private suspend fun safeSpeakLong(
+        text: String,
+        language: Language,
+        diagnostics: OutputDiagnostics
+    ) {
+        splitForTts(text).forEach { safeSpeak(it, language, diagnostics) }
     }
 
     internal fun splitForTts(text: String): List<String> {
@@ -213,21 +233,45 @@ class BroadcastOrchestrator @Inject constructor(
         return chunks
     }
 
-    private suspend fun safeSpeak(text: String, language: Language) {
+    private suspend fun safeSpeak(
+        text: String,
+        language: Language,
+        diagnostics: OutputDiagnostics
+    ) {
         if (text.isBlank()) return
         require(text.length <= MAX_TTS_CHUNK)
         runCatching { ttsEngine.speak(text, language) }
+            .onSuccess { diagnostics.successfulOutputs++ }
             .onFailure { error ->
                 Log.e(TAG, "speak failed: ${error.message}")
                 if (error is CancellationException) throw error
+                diagnostics.failures += "系统语音：${error.message ?: error::class.java.simpleName}"
             }
     }
 
-    private suspend fun safePlayRecordedChapter(book: Int, chapter: Int): Boolean =
+    private suspend fun safePlayRecordedChapter(
+        book: Int,
+        chapter: Int,
+        diagnostics: OutputDiagnostics
+    ): Boolean =
         runCatching { bibleAudioPlayer.playChapter(book, chapter) }
+            .onSuccess { played ->
+                if (played) {
+                    diagnostics.successfulOutputs++
+                } else {
+                    diagnostics.failures += "真人录音 $book:$chapter 未找到或无法播放"
+                }
+            }
             .onFailure { error ->
                 Log.e(TAG, "recorded Bible playback failed for $book:$chapter", error)
                 if (error is CancellationException) throw error
+                diagnostics.failures +=
+                    "真人录音 $book:$chapter：${error.message ?: error::class.java.simpleName}"
             }
             .getOrDefault(false)
+
+    private class OutputDiagnostics {
+        var successfulOutputs: Int = 0
+        val failures = mutableListOf<String>()
+    }
 }

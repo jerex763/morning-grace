@@ -144,6 +144,29 @@ class BroadcastOrchestratorTest {
     }
 
     @Test
+    fun `all failed speech attempts produce a visible diagnostic failure`() = runTest {
+        coEvery { ttsEngine.speak(any(), any()) } throws
+            IllegalStateException("系统语音错误码 -8")
+
+        var failure: Throwable? = null
+        try {
+            orchestrator.broadcast(
+                LocalDate.of(2026, 1, 1),
+                BroadcastConfig(
+                    skipWeather = true,
+                    skipBible = true,
+                    skipNews = true
+                )
+            )
+        } catch (error: Throwable) {
+            failure = error
+        }
+
+        assertTrue(failure is NoAudibleOutputException)
+        assertTrue(failure?.message.orEmpty().contains("系统语音错误码 -8"))
+    }
+
+    @Test
     fun `Bible recording completes before final news begins`() = runTest {
         coEvery { bibleAudioPlayer.playChapter(any(), any()) } returns true
         coEvery { newsRepo.getTopHeadlines(3, false) } returns listOf(

@@ -3,6 +3,8 @@ package com.morninggrace.tts
 import android.content.Context
 import android.media.AudioAttributes
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import com.morninggrace.core.model.Language
@@ -19,6 +21,8 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
 
     @Volatile private var tts: TextToSpeech? = null
     @Volatile private var ready = false
+    @Volatile private var engineName = "未知"
+    @Volatile private var languageStatus = TextToSpeech.LANG_NOT_SUPPORTED
 
     /** Called by the Android TextToSpeech.OnInitListener. */
     fun onInitResult(status: Int) {
@@ -36,24 +40,34 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
     suspend fun attach(context: Context): Boolean = suspendCancellableCoroutine { cont ->
         attachedContext = context.applicationContext
         val engine = TextToSpeech(context) { status ->
-            onInitResult(status)
-            if (!cont.isActive) return@TextToSpeech
-            val initialized = if (status == TextToSpeech.SUCCESS) {
-                val current = tts
-                current?.setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                        .build()
+            // Some vendor engines invoke their callback unusually early. Posting the
+            // initialization work guarantees that `tts` has been assigned first.
+            Handler(Looper.getMainLooper()).post {
+                onInitResult(status)
+                if (!cont.isActive) return@post
+                val initialized = if (status == TextToSpeech.SUCCESS) {
+                    val current = tts
+                    engineName = current?.defaultEngine ?: "未知"
+                    current?.setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                            .build()
+                    )
+                    languageStatus = current?.setLanguage(Locale.SIMPLIFIED_CHINESE)
+                        ?: TextToSpeech.LANG_NOT_SUPPORTED
+                    languageStatus >= TextToSpeech.LANG_AVAILABLE
+                } else {
+                    languageStatus = TextToSpeech.LANG_NOT_SUPPORTED
+                    false
+                }
+                ready = initialized
+                android.util.Log.d(
+                    "MorningGrace",
+                    "TTS engine=$engineName languageStatus=$languageStatus ready=$ready"
                 )
-                val languageStatus = current?.setLanguage(Locale.SIMPLIFIED_CHINESE)
-                    ?: TextToSpeech.LANG_NOT_SUPPORTED
-                languageStatus >= TextToSpeech.LANG_AVAILABLE
-            } else {
-                false
+                cont.resume(initialized)
             }
-            ready = initialized
-            cont.resume(initialized)
         }
         tts = engine
         cont.invokeOnCancellation { engine.stop(); engine.shutdown() }
@@ -66,6 +80,9 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
         attachedContext = null
         ready = false
     }
+
+    fun diagnosticSummary(): String =
+        "引擎：$engineName；中文状态：$languageStatus；就绪：${if (ready) "是" else "否"}"
 
     override fun isAvailable(): Boolean = ready
 
@@ -103,12 +120,20 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
                 }
                 override fun onError(id: String, errorCode: Int) {
                     if (id == utteranceId && cont.isActive)
-                        cont.resumeWithException(RuntimeException("TTS error on utterance $id, code $errorCode"))
+                        cont.resumeWithException(
+                            RuntimeException(
+                                "系统语音错误码 $errorCode（$engineName，中文状态 $languageStatus）"
+                            )
+                        )
                 }
                 @Deprecated("Deprecated in Java")
                 override fun onError(id: String) {
                     if (id == utteranceId && cont.isActive)
-                        cont.resumeWithException(RuntimeException("TTS error on utterance $id"))
+                        cont.resumeWithException(
+                            RuntimeException(
+                                "系统语音播放失败（$engineName，中文状态 $languageStatus）"
+                            )
+                        )
                 }
             })
 
@@ -119,7 +144,11 @@ class AndroidTtsEngine @Inject constructor() : TtsEngine {
             }
             val result = engine.speak(text, TextToSpeech.QUEUE_FLUSH, params, utteranceId)
             if (result == TextToSpeech.ERROR && cont.isActive) {
-                cont.resumeWithException(RuntimeException("TTS speak() returned ERROR"))
+                cont.resumeWithException(
+                    RuntimeException(
+                        "系统拒绝开始朗读（$engineName，中文状态 $languageStatus）"
+                    )
+                )
             }
 
             cont.invokeOnCancellation { engine.stop() }

@@ -140,8 +140,10 @@ class AlarmService : Service() {
                 throw cancelled
             } catch (error: Exception) {
                 Log.e(TAG, "Playback failed", error)
+                val detail = error.message?.take(900)
+                    ?: "系统没有返回具体错误"
                 publishPlaybackError(
-                    "播放没有成功开始。请确认录音已经导入、媒体音量已开启，然后再试一次。"
+                    "播放诊断：\n$detail\n\n${ttsEngine.diagnosticSummary()}\n\n请把这个窗口截图发给开发者。"
                 )
             } finally {
                 releaseWakeLock()
