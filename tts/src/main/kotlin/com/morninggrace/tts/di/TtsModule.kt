@@ -1,8 +1,6 @@
 package com.morninggrace.tts.di
 
-import com.morninggrace.tts.AndroidSpeechEngine
 import com.morninggrace.tts.AndroidTtsEngine
-import com.morninggrace.tts.SpeechEngine
 import com.morninggrace.tts.TtsEngine
 import dagger.Binds
 import dagger.Module
@@ -16,7 +14,4 @@ abstract class TtsModule {
 
     @Binds @Singleton
     abstract fun bindsTtsEngine(impl: AndroidTtsEngine): TtsEngine
-
-    @Binds @Singleton
-    abstract fun bindsSpeechEngine(impl: AndroidSpeechEngine): SpeechEngine
 }

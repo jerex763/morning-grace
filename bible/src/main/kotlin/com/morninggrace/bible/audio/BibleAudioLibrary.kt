@@ -4,17 +4,26 @@ import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
+import android.os.StatFs
 import com.morninggrace.bible.plan.SequentialPlan
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.RandomAccessFile
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.zip.ZipInputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.cancellation.CancellationException
 
 data class AudioChapter(val book: Int, val chapter: Int)
 
@@ -29,6 +38,14 @@ data class AudioImportResult(
     val ignored: Int,
     val failedArchives: Int
 )
+
+data class AudioImportProgress(
+    val archiveNumber: Int,
+    val archiveCount: Int,
+    val processedChapters: Int
+)
+
+class InsufficientStorageException(message: String) : IOException(message)
 
 /**
  * Maps WordProject chapter filenames such as GEN_001_ck7_ef10.mp3 to canonical
@@ -82,6 +99,7 @@ object WordProjectAudioNaming {
 class BibleAudioLibrary @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
+    private val importMutex = Mutex()
     private val audioRoot: File
         get() {
             val musicRoot = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
@@ -93,11 +111,11 @@ class BibleAudioLibrary @Inject constructor(
         File(audioRoot, canonicalFileName(book, chapter))
 
     fun findChapter(book: Int, chapter: Int): File? =
-        chapterFile(book, chapter).takeIf { it.isFile && it.length() > 0L }
+        chapterFile(book, chapter).takeIf(::isUsableMp3)
 
     fun stats(): AudioLibraryStats {
         val files = audioRoot.listFiles().orEmpty()
-            .filter { it.isFile && WordProjectAudioNaming.parse(it.name) != null }
+            .filter { WordProjectAudioNaming.parse(it.name) != null && isUsableMp3(it) }
         return AudioLibraryStats(
             chapterCount = files.size,
             totalBytes = files.sumOf { it.length() }
@@ -106,47 +124,73 @@ class BibleAudioLibrary @Inject constructor(
 
     suspend fun importZipArchives(
         resolver: ContentResolver,
-        uris: List<Uri>
+        uris: List<Uri>,
+        onProgress: (AudioImportProgress) -> Unit = {}
     ): AudioImportResult = withContext(Dispatchers.IO) {
+        importMutex.withLock {
+            ensureEnoughStorage(resolver, uris)
+            importLocked(resolver, uris, onProgress)
+        }
+    }
+
+    private suspend fun importLocked(
+        resolver: ContentResolver,
+        uris: List<Uri>,
+        onProgress: (AudioImportProgress) -> Unit
+    ): AudioImportResult {
         var imported = 0
         var alreadyPresent = 0
         var ignored = 0
         var failedArchives = 0
+        var processedChapters = 0
 
-        for (uri in uris) {
+        for ((archiveIndex, uri) in uris.withIndex()) {
+            currentCoroutineContext().ensureActive()
             try {
                 val input = resolver.openInputStream(uri)
                     ?: throw IOException("Cannot open $uri")
                 ZipInputStream(BufferedInputStream(input)).use { zip ->
                     var entry = zip.nextEntry
                     while (entry != null) {
+                        currentCoroutineContext().ensureActive()
                         if (!entry.isDirectory && entry.name.endsWith(".mp3", ignoreCase = true)) {
                             val chapter = WordProjectAudioNaming.parse(entry.name)
                             if (chapter == null) {
                                 ignored++
                             } else {
                                 val target = chapterFile(chapter.book, chapter.chapter)
-                                if (target.isFile && target.length() > 0L) {
+                                if (isUsableMp3(target)) {
                                     alreadyPresent++
                                 } else {
+                                    target.delete()
                                     writeEntry(zip, target)
                                     imported++
                                 }
+                                processedChapters++
+                                onProgress(
+                                    AudioImportProgress(
+                                        archiveNumber = archiveIndex + 1,
+                                        archiveCount = uris.size,
+                                        processedChapters = processedChapters
+                                    )
+                                )
                             }
                         }
                         zip.closeEntry()
                         entry = zip.nextEntry
                     }
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (_: Exception) {
                 failedArchives++
             }
         }
 
-        AudioImportResult(imported, alreadyPresent, ignored, failedArchives)
+        return AudioImportResult(imported, alreadyPresent, ignored, failedArchives)
     }
 
-    private fun writeEntry(zip: ZipInputStream, target: File) {
+    private suspend fun writeEntry(zip: ZipInputStream, target: File) {
         val temporary = File(audioRoot, "${target.name}.part")
         temporary.delete()
         try {
@@ -154,6 +198,7 @@ class BibleAudioLibrary @Inject constructor(
                 val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
                 var total = 0L
                 while (true) {
+                    currentCoroutineContext().ensureActive()
                     val read = zip.read(buffer)
                     if (read < 0) break
                     total += read
@@ -166,14 +211,62 @@ class BibleAudioLibrary @Inject constructor(
             if (temporary.length() < MIN_CHAPTER_BYTES) {
                 throw IOException("Audio chapter is empty or truncated")
             }
-            if (!temporary.renameTo(target)) {
-                temporary.copyTo(target, overwrite = true)
-                temporary.delete()
+            if (!isUsableMp3(temporary)) {
+                throw IOException("Audio chapter is not a valid MP3")
             }
+            moveAtomically(temporary, target)
         } catch (error: Exception) {
             temporary.delete()
+            if (!isUsableMp3(target)) target.delete()
             throw error
         }
+    }
+
+    private fun ensureEnoughStorage(resolver: ContentResolver, uris: List<Uri>) {
+        val compressedBytes = uris.sumOf { uri ->
+            runCatching {
+                resolver.openAssetFileDescriptor(uri, "r")?.use { descriptor ->
+                    descriptor.length.takeIf { it > 0L } ?: 0L
+                } ?: 0L
+            }.getOrDefault(0L)
+        }
+        if (compressedBytes <= 0L) return
+        val required = (compressedBytes * STORAGE_OVERHEAD_FACTOR).toLong() + FREE_SPACE_RESERVE
+        val available = StatFs(audioRoot.absolutePath).availableBytes
+        if (available < required) {
+            throw InsufficientStorageException(
+                "录音包约需 ${required / (1024 * 1024)}MB，当前可用空间不足"
+            )
+        }
+    }
+
+    private fun moveAtomically(source: File, target: File) {
+        target.parentFile?.mkdirs()
+        try {
+            Files.move(
+                source.toPath(),
+                target.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING
+            )
+        } catch (_: Exception) {
+            target.delete()
+            if (!source.renameTo(target)) {
+                throw IOException("Unable to finalize imported audio")
+            }
+        }
+    }
+
+    private fun isUsableMp3(file: File): Boolean {
+        if (!file.isFile || file.length() < MIN_CHAPTER_BYTES) return false
+        return runCatching {
+            RandomAccessFile(file, "r").use { input ->
+                val first = input.readUnsignedByte()
+                val second = input.readUnsignedByte()
+                (first == 'I'.code && second == 'D'.code) ||
+                    (first == 0xFF && second and 0xE0 == 0xE0)
+            }
+        }.getOrDefault(false)
     }
 
     companion object {
@@ -181,6 +274,8 @@ class BibleAudioLibrary @Inject constructor(
         const val DIRECTORY_NAME = "bible-audio"
         private const val MIN_CHAPTER_BYTES = 8 * 1024L
         private const val MAX_CHAPTER_BYTES = 64 * 1024 * 1024L
+        private const val FREE_SPACE_RESERVE = 256 * 1024 * 1024L
+        private const val STORAGE_OVERHEAD_FACTOR = 1.15
 
         fun canonicalFileName(book: Int, chapter: Int): String =
             "%02d_%03d.mp3".format(book, chapter)

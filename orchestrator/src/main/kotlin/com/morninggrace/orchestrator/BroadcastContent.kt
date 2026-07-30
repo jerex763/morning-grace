@@ -2,11 +2,10 @@ package com.morninggrace.orchestrator
 
 data class BroadcastContent(
     val greeting: String,
-    val passageName: String,          // combined titles for the confirmation prompt, blank when skipped
+    val passageName: String,
     val weather: String,
     val passages: List<PassageReading>,
-    val marketSummary: String,
-    val newsSummary: String
+    val news: List<NewsReading>
 )
 
 data class PassageReading(
@@ -16,4 +15,9 @@ data class PassageReading(
     val titleZh: String,
     val zh: String,
     val en: String
+)
+
+data class NewsReading(
+    val title: String,
+    val content: String
 )

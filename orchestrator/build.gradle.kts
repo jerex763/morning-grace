@@ -21,7 +21,6 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":bible"))
     implementation(project(":tts"))
-    implementation(project(":ai"))
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
     implementation(libs.kotlinx.coroutines.android)

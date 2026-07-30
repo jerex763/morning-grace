@@ -39,4 +39,18 @@ class ChapterADayPlanTest {
     fun `total days covers the whole Bible three chapters at a time`() {
         assertEquals(397, ChapterADayPlan().getTotalDays())
     }
+
+    @Test
+    fun `final day contains only Revelation 22 and next day starts a fresh cycle`() {
+        val plan = ChapterADayPlan()
+        val epoch = LocalDate.of(2026, 1, 1)
+        val finalDay = plan.getReadingForDate(epoch.plusDays(396))
+        val nextDay = plan.getReadingForDate(epoch.plusDays(397))
+
+        assertEquals(1, finalDay.size)
+        assertEquals(66, finalDay.single().book)
+        assertEquals(22, finalDay.single().chapter)
+        assertEquals(listOf(1, 2, 3), nextDay.map { it.chapter })
+        assertEquals(listOf(1, 1, 1), nextDay.map { it.book })
+    }
 }

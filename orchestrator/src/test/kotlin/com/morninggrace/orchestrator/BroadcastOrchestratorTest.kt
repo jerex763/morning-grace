@@ -1,301 +1,245 @@
 package com.morninggrace.orchestrator
 
-import com.morninggrace.ai.ConversationManager
 import com.morninggrace.bible.BibleRepository
 import com.morninggrace.bible.audio.BibleAudioPlayer
 import com.morninggrace.bible.model.BibleVerse
 import com.morninggrace.bible.plan.McCheyneOnePlan
+import com.morninggrace.core.model.BroadcastConfig
+import com.morninggrace.core.model.Language
 import com.morninggrace.core.model.LocationPrefs
-import com.morninggrace.core.repository.FinanceRepository
+import com.morninggrace.core.model.NewsHeadline
 import com.morninggrace.core.repository.LocationRepository
 import com.morninggrace.core.repository.NewsRepository
 import com.morninggrace.core.repository.WeatherRepository
-import com.morninggrace.core.model.BroadcastConfig
-import com.morninggrace.core.model.ConfirmationResult
-import com.morninggrace.core.model.Language
-import com.morninggrace.tts.SpeechEngine
 import com.morninggrace.tts.TtsEngine
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.mockk
+import java.time.LocalDate
+import java.time.LocalTime
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.LocalDate
 
 class BroadcastOrchestratorTest {
 
-    private val ttsEngine = mockk<TtsEngine>(relaxed = true)
+    private val ttsEngine = mockk<TtsEngine>(relaxed = true) {
+        every { isAvailable() } returns true
+    }
     private val bibleAudioPlayer = mockk<BibleAudioPlayer>(relaxed = true) {
         coEvery { playChapter(any(), any()) } returns false
     }
-    private val bibleRepo = mockk<BibleRepository>()
-    private val plan = McCheyneOnePlan()
-    private val weatherRepo = mockk<WeatherRepository> {
-        coEvery { getCurrentWeather(any(), any()) } returns null
+    private val bibleRepo = mockk<BibleRepository> {
+        coEvery { getVersesForPassage(any(), "zh") } returns listOf(
+            BibleVerse(1, 1, 1, "zh", "起初，神创造天地。")
+        )
+        coEvery { getVersesForPassage(any(), "en") } returns emptyList()
     }
-    private val financeRepo = mockk<FinanceRepository> {
-        coEvery { getMarketData() } returns emptyList()
+    private val weatherRepo = mockk<WeatherRepository> {
+        coEvery { getCurrentWeather(any()) } returns null
     }
     private val newsRepo = mockk<NewsRepository> {
-        coEvery { getTopHeadlines(any()) } returns emptyList()
+        coEvery { getTopHeadlines(any(), any()) } returns emptyList()
     }
     private val locationRepo = mockk<LocationRepository> {
-        every { get() } returns LocationPrefs(lat = -33.87, lon = 151.21)
+        every { get() } returns LocationPrefs(-33.87, 151.21)
     }
-    private val speechEngine = mockk<SpeechEngine> {
-        coEvery { listenForConfirmation(any()) } returns ConfirmationResult.Confirmed
-        every { isAvailable() } returns true
-    }
-    private val conversationManager = mockk<ConversationManager>(relaxed = true)
-
     private val orchestrator = BroadcastOrchestrator(
-        ttsEngine, bibleAudioPlayer, bibleRepo, plan, weatherRepo, financeRepo, newsRepo, locationRepo,
-        speechEngine, conversationManager
+        ttsEngine,
+        bibleAudioPlayer,
+        bibleRepo,
+        McCheyneOnePlan(),
+        weatherRepo,
+        newsRepo,
+        locationRepo
     )
 
     @Test
-    fun `initial state is Idle`() {
-        assertEquals(BroadcastState.Idle, orchestrator.state)
-    }
-
-    @Test
-    fun `broadcast transitions through Preparing then back to Idle`() = runTest {
-        coEvery { bibleRepo.getVersesForPassage(any(), "zh") } returns listOf(
-            BibleVerse(1, 1, 1, "zh", "起初，神创造天地。")
+    fun `broadcast reads Bible automatically without confirmation`() = runTest {
+        orchestrator.broadcast(
+            LocalDate.of(2026, 1, 1),
+            BroadcastConfig(skipWeather = true, skipNews = true)
         )
-        coEvery { bibleRepo.getVersesForPassage(any(), "en") } returns listOf(
-            BibleVerse(1, 1, 1, "en", "In the beginning God created the heavens.")
-        )
-        every { ttsEngine.isAvailable() } returns true
 
-        orchestrator.broadcast(LocalDate.of(2026, 1, 1))
-
-        assertEquals(BroadcastState.Idle, orchestrator.state)
-    }
-
-    @Test
-    fun `broadcast speaks at least 4 times`() = runTest {
-        coEvery { bibleRepo.getVersesForPassage(any(), "zh") } returns listOf(
-            BibleVerse(1, 1, 1, "zh", "起初，神创造天地。")
-        )
-        coEvery { bibleRepo.getVersesForPassage(any(), "en") } returns listOf(
-            BibleVerse(1, 1, 1, "en", "In the beginning God created the heavens.")
-        )
-        every { ttsEngine.isAvailable() } returns true
-
-        orchestrator.broadcast(LocalDate.of(2026, 1, 1))
-
-        coVerify(atLeast = 4) { ttsEngine.speak(any(), any()) }
-    }
-
-    @Test
-    fun `broadcast handles empty bible verses gracefully`() = runTest {
-        coEvery { bibleRepo.getVersesForPassage(any(), any()) } returns emptyList()
-        every { ttsEngine.isAvailable() } returns true
-
-        orchestrator.broadcast(LocalDate.of(2026, 1, 1))
-
-        assertEquals(BroadcastState.Idle, orchestrator.state)
-    }
-
-    @Test
-    fun `stop transitions state to Idle`() {
-        orchestrator.stop()
-        io.mockk.verify(exactly = 1) { bibleAudioPlayer.stop() }
-        assertEquals(BroadcastState.Idle, orchestrator.state)
-    }
-
-    @Test
-    fun `skipBible config skips bible fetch and speak`() = runTest {
-        every { ttsEngine.isAvailable() } returns true
-
-        orchestrator.broadcast(LocalDate.of(2026, 1, 1), BroadcastConfig(skipBible = true))
-
-        coVerify(exactly = 0) { bibleRepo.getVersesForPassage(any(), any()) }
-        assertEquals(BroadcastState.Idle, orchestrator.state)
-    }
-
-    @Test
-    fun `all modules disabled still speaks greeting and farewell`() = runTest {
-        every { ttsEngine.isAvailable() } returns true
-        val config = BroadcastConfig(skipWeather = true, skipBible = true, skipFinance = true, skipNews = true)
-
-        orchestrator.broadcast(LocalDate.of(2026, 1, 1), config)
-
-        // greeting + farewell = at least 2 speaks
-        coVerify(atLeast = 2) { ttsEngine.speak(any(), any()) }
-        assertEquals(BroadcastState.Idle, orchestrator.state)
-    }
-
-    // ── weather module ──────────────────────────────────────────────────────
-
-    @Test
-    fun `skipWeather does not speak weather`() = runTest {
-        every { ttsEngine.isAvailable() } returns true
-
-        orchestrator.broadcast(LocalDate.of(2026, 1, 1), BroadcastConfig(skipBible = true, skipWeather = true))
-
-        coVerify(exactly = 0) { ttsEngine.speak(match { it.contains("天气") }, any()) }
-    }
-
-    @Test
-    fun `weather enabled speaks weather fallback when unavailable`() = runTest {
-        every { ttsEngine.isAvailable() } returns true
-
-        // weatherRepo returns null by default → fallback "天气暂时无法获取"
-        orchestrator.broadcast(LocalDate.of(2026, 1, 1), BroadcastConfig(skipBible = true))
-
-        coVerify(atLeast = 1) { ttsEngine.speak(match { it.contains("天气") }, any()) }
-    }
-
-    // ── finance module ──────────────────────────────────────────────────────
-
-    @Test
-    fun `skipFinance does not speak market intro`() = runTest {
-        every { ttsEngine.isAvailable() } returns true
-
-        orchestrator.broadcast(LocalDate.of(2026, 1, 1), BroadcastConfig(skipBible = true, skipFinance = true))
-
-        coVerify(exactly = 0) { ttsEngine.speak(match { it.contains("市场行情") }, any()) }
-    }
-
-    @Test
-    fun `finance enabled speaks market intro`() = runTest {
-        every { ttsEngine.isAvailable() } returns true
-
-        orchestrator.broadcast(LocalDate.of(2026, 1, 1), BroadcastConfig(skipBible = true))
-
-        coVerify(atLeast = 1) { ttsEngine.speak(match { it.contains("市场行情") }, any()) }
-    }
-
-    // ── news module ─────────────────────────────────────────────────────────
-
-    @Test
-    fun `skipNews does not speak headlines intro`() = runTest {
-        every { ttsEngine.isAvailable() } returns true
-
-        orchestrator.broadcast(LocalDate.of(2026, 1, 1), BroadcastConfig(skipBible = true, skipNews = true))
-
-        coVerify(exactly = 0) { ttsEngine.speak(match { it.contains("财经头条") }, any()) }
-    }
-
-    @Test
-    fun `news enabled speaks headlines intro`() = runTest {
-        every { ttsEngine.isAvailable() } returns true
-
-        orchestrator.broadcast(LocalDate.of(2026, 1, 1), BroadcastConfig(skipBible = true))
-
-        coVerify(atLeast = 1) { ttsEngine.speak(match { it.contains("财经头条") }, any()) }
-    }
-
-    // ── bible voice confirmation ────────────────────────────────────────────
-
-    @Test
-    fun `voice skip suppresses bible reading`() = runTest {
-        coEvery { bibleRepo.getVersesForPassage(any(), "zh") } returns listOf(
-            BibleVerse(1, 1, 1, "zh", "起初，神创造天地。")
-        )
-        coEvery { bibleRepo.getVersesForPassage(any(), "en") } returns listOf(
-            BibleVerse(1, 1, 1, "en", "In the beginning God created the heavens.")
-        )
-        coEvery { speechEngine.listenForConfirmation(any()) } returns ConfirmationResult.Skipped
-        every { ttsEngine.isAvailable() } returns true
-
-        orchestrator.broadcast(LocalDate.of(2026, 1, 1))
-
-        coVerify(exactly = 0) { ttsEngine.speak(match { it.contains("起初") }, any()) }
-    }
-
-    @Test
-    fun `broadcast reads all four McCheyne passages in Chinese only by default`() = runTest {
-        coEvery { bibleRepo.getVersesForPassage(any(), "zh") } returns listOf(
-            BibleVerse(1, 1, 1, "zh", "经文")
-        )
-        coEvery { bibleRepo.getVersesForPassage(any(), "en") } returns listOf(
-            BibleVerse(1, 1, 1, "en", "verse")
-        )
-        every { ttsEngine.isAvailable() } returns true
-
-        // Jan 1 = McCheyne day 1 → 4 passages (2 OT + 2 NT streams)
-        orchestrator.broadcast(LocalDate.of(2026, 1, 1))
-
-        coVerify(exactly = 4) { bibleRepo.getVersesForPassage(any(), "zh") }
-        coVerify(exactly = 0) { bibleRepo.getVersesForPassage(any(), "en") }
-        coVerify(exactly = 0) { ttsEngine.speak("verse", Language.EN) }
         coVerify(exactly = 4) {
             ttsEngine.speak(match { it.startsWith("现在读") }, Language.ZH)
         }
+        coVerify(exactly = 4) {
+            ttsEngine.speak("起初，神创造天地。", Language.ZH)
+        }
+        assertEquals(BroadcastState.Idle, orchestrator.state)
     }
 
     @Test
-    fun `English Bible is fetched and spoken when enabled`() = runTest {
-        coEvery { bibleRepo.getVersesForPassage(any(), "zh") } returns listOf(
-            BibleVerse(1, 1, 1, "zh", "经文")
-        )
-        coEvery { bibleRepo.getVersesForPassage(any(), "en") } returns listOf(
-            BibleVerse(1, 1, 1, "en", "verse")
-        )
-        every { ttsEngine.isAvailable() } returns true
+    fun `three news items speak official summaries by default`() = runTest {
+        coEvery { newsRepo.getTopHeadlines(3, false) } returns (1..3).map {
+            NewsHeadline(title = "标题$it", summary = "概述$it", fullContent = "全文$it")
+        }
 
         orchestrator.broadcast(
             LocalDate.of(2026, 1, 1),
-            BroadcastConfig(includeEnglishBible = true)
+            BroadcastConfig(skipWeather = true, skipBible = true)
         )
 
-        coVerify(exactly = 4) { bibleRepo.getVersesForPassage(any(), "en") }
-        coVerify(exactly = 4) { ttsEngine.speak("verse", Language.EN) }
+        (1..3).forEach { index ->
+            coVerify { ttsEngine.speak(match { it.contains("标题$index") }, Language.ZH) }
+            coVerify { ttsEngine.speak("概述$index", Language.ZH) }
+            coVerify(exactly = 0) { ttsEngine.speak("全文$index", Language.ZH) }
+        }
+        coVerify { ttsEngine.speak("第一条，标题1。", Language.ZH) }
+        coVerify { ttsEngine.speak("第二条，标题2。", Language.ZH) }
+        coVerify { ttsEngine.speak("第三条，标题3。", Language.ZH) }
     }
 
     @Test
-    fun `voice confirm reads bible`() = runTest {
-        coEvery { bibleRepo.getVersesForPassage(any(), "zh") } returns listOf(
-            BibleVerse(1, 1, 1, "zh", "起初，神创造天地。")
+    fun `full news mode speaks article content`() = runTest {
+        coEvery { newsRepo.getTopHeadlines(3, true) } returns listOf(
+            NewsHeadline(title = "标题", summary = "概述", fullContent = "完整正文")
         )
-        coEvery { bibleRepo.getVersesForPassage(any(), "en") } returns listOf(
-            BibleVerse(1, 1, 1, "en", "In the beginning God created the heavens.")
+
+        orchestrator.broadcast(
+            LocalDate.of(2026, 1, 1),
+            BroadcastConfig(
+                skipWeather = true,
+                skipBible = true,
+                newsFullArticles = true
+            )
         )
-        coEvery { speechEngine.listenForConfirmation(any()) } returns ConfirmationResult.Confirmed
-        every { ttsEngine.isAvailable() } returns true
 
-        orchestrator.broadcast(LocalDate.of(2026, 1, 1))
-
-        coVerify(atLeast = 1) { ttsEngine.speak(match { it.contains("起初") }, any()) }
+        coVerify { ttsEngine.speak("完整正文", Language.ZH) }
+        coVerify(exactly = 0) { ttsEngine.speak("概述", Language.ZH) }
     }
 
     @Test
-    fun `recorded chapter replaces Chinese TTS when available`() = runTest {
-        coEvery { bibleRepo.getVersesForPassage(any(), "zh") } returns listOf(
-            BibleVerse(1, 1, 1, "zh", "只应由回退语音朗读")
-        )
+    fun `recorded chapters replace Chinese TTS`() = runTest {
         coEvery { bibleAudioPlayer.playChapter(any(), any()) } returns true
-        every { ttsEngine.isAvailable() } returns true
 
-        orchestrator.broadcast(LocalDate.of(2026, 1, 1))
+        orchestrator.broadcast(
+            LocalDate.of(2026, 1, 1),
+            BroadcastConfig(skipWeather = true, skipNews = true)
+        )
 
         coVerify(exactly = 4) { bibleAudioPlayer.playChapter(any(), any()) }
         coVerify(exactly = 0) {
-            ttsEngine.speak(match { it.contains("只应由回退语音朗读") }, Language.ZH)
+            ttsEngine.speak("起初，神创造天地。", Language.ZH)
         }
     }
 
     @Test
-    fun `recorded audio can be disabled`() = runTest {
-        coEvery { bibleRepo.getVersesForPassage(any(), "zh") } returns listOf(
-            BibleVerse(1, 1, 1, "zh", "使用系统中文语音")
-        )
+    fun `recorded chapters still play when system TTS is unavailable`() = runTest {
+        every { ttsEngine.isAvailable() } returns false
+        coEvery { ttsEngine.speak(any(), any()) } throws
+            IllegalStateException("TTS unavailable")
         coEvery { bibleAudioPlayer.playChapter(any(), any()) } returns true
-        every { ttsEngine.isAvailable() } returns true
 
         orchestrator.broadcast(
             LocalDate.of(2026, 1, 1),
-            BroadcastConfig(preferRecordedBible = false)
+            BroadcastConfig(skipWeather = true, skipNews = true)
         )
 
-        coVerify(exactly = 0) { bibleAudioPlayer.playChapter(any(), any()) }
-        coVerify(exactly = 4) {
-            ttsEngine.speak("使用系统中文语音", Language.ZH)
+        coVerify(exactly = 4) { bibleAudioPlayer.playChapter(any(), any()) }
+    }
+
+    @Test
+    fun `all failed speech attempts produce a visible diagnostic failure`() = runTest {
+        coEvery { ttsEngine.speak(any(), any()) } throws
+            IllegalStateException("系统语音错误码 -8")
+
+        var failure: Throwable? = null
+        try {
+            orchestrator.broadcast(
+                LocalDate.of(2026, 1, 1),
+                BroadcastConfig(
+                    skipWeather = true,
+                    skipBible = true,
+                    skipNews = true
+                )
+            )
+        } catch (error: Throwable) {
+            failure = error
         }
+
+        assertTrue(failure is NoAudibleOutputException)
+        assertTrue(failure?.message.orEmpty().contains("系统语音错误码 -8"))
+    }
+
+    @Test
+    fun `Bible recording completes before final news begins`() = runTest {
+        coEvery { bibleAudioPlayer.playChapter(any(), any()) } returns true
+        coEvery { newsRepo.getTopHeadlines(3, false) } returns listOf(
+            NewsHeadline(title = "新闻标题", summary = "新闻概述")
+        )
+
+        orchestrator.broadcast(
+            LocalDate.of(2026, 1, 1),
+            BroadcastConfig(skipWeather = true)
+        )
+
+        coVerifyOrder {
+            bibleAudioPlayer.playChapter(any(), any())
+            ttsEngine.speak("新闻概述", Language.ZH)
+        }
+    }
+
+    @Test
+    fun `offline broadcast skips network repositories and continues to recorded Bible`() = runTest {
+        coEvery { bibleAudioPlayer.playChapter(any(), any()) } returns true
+
+        orchestrator.broadcast(
+            LocalDate.of(2026, 1, 1),
+            BroadcastConfig(offline = true)
+        )
+
+        coVerify(exactly = 0) { weatherRepo.getCurrentWeather(any()) }
+        coVerify(exactly = 0) { newsRepo.getTopHeadlines(any(), any()) }
+        coVerify {
+            ttsEngine.speak("当前没有网络，今天跳过天气和新闻。", Language.ZH)
+        }
+        coVerify(exactly = 4) { bibleAudioPlayer.playChapter(any(), any()) }
+        coVerify(exactly = 0) {
+            ttsEngine.speak("今日新闻暂时无法获取。", Language.ZH)
+        }
+    }
+
+    @Test
+    fun `broadcast greeting follows the current time period`() = runTest {
+        orchestrator.broadcast(
+            date = LocalDate.of(2026, 1, 1),
+            config = BroadcastConfig(
+                skipWeather = true,
+                skipBible = true,
+                skipNews = true
+            ),
+            time = LocalTime.of(19, 30)
+        )
+
+        coVerify {
+            ttsEngine.speak("晚上好，晨光播报开始。", Language.ZH)
+        }
+    }
+
+    @Test
+    fun `long content is split below TTS limit at punctuation`() {
+        val text = buildString {
+            repeat(1_500) { append("这是一句话。") }
+        }
+
+        val chunks = orchestrator.splitForTts(text)
+
+        assertTrue(chunks.size > 1)
+        assertTrue(chunks.all { it.length <= 2_800 })
+        assertEquals(text, chunks.joinToString(""))
+    }
+
+    @Test
+    fun `stop stops both audio engines`() {
+        orchestrator.stop()
+
+        io.mockk.verify { bibleAudioPlayer.stop() }
+        io.mockk.verify { ttsEngine.stop() }
+        assertEquals(BroadcastState.Idle, orchestrator.state)
     }
 }

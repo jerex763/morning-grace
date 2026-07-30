@@ -14,4 +14,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "MorningGrace"
-include(":app", ":core", ":alarm", ":orchestrator", ":bible", ":tts", ":ai")
+include(":app", ":core", ":alarm", ":orchestrator", ":bible", ":tts")

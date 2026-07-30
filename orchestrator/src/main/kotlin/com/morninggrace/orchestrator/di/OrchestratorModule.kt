@@ -5,12 +5,10 @@ import com.morninggrace.bible.plan.ChapterADayPlan
 import com.morninggrace.bible.plan.McCheyneOnePlan
 import com.morninggrace.bible.plan.SequentialPlan
 import com.morninggrace.orchestrator.DynamicBibleReadingPlan
-import com.morninggrace.core.repository.FinanceRepository
 import com.morninggrace.core.repository.NewsRepository
 import com.morninggrace.core.repository.WeatherRepository
-import com.morninggrace.orchestrator.finance.YahooFinanceRepository
 import com.morninggrace.orchestrator.news.RssNewsRepository
-import com.morninggrace.orchestrator.weather.OpenMeteoWeatherRepository
+import com.morninggrace.orchestrator.weather.CmaWeatherRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -28,10 +26,7 @@ abstract class OrchestratorModule {
     abstract fun bindsBibleReadingPlan(impl: DynamicBibleReadingPlan): BibleReadingPlan
 
     @Binds @Singleton
-    abstract fun bindsWeatherRepository(impl: OpenMeteoWeatherRepository): WeatherRepository
-
-    @Binds @Singleton
-    abstract fun bindsFinanceRepository(impl: YahooFinanceRepository): FinanceRepository
+    abstract fun bindsWeatherRepository(impl: CmaWeatherRepository): WeatherRepository
 
     @Binds @Singleton
     abstract fun bindsNewsRepository(impl: RssNewsRepository): NewsRepository
@@ -42,8 +37,8 @@ abstract class OrchestratorModule {
 
         @Provides @Singleton
         fun providesOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
+            .connectTimeout(6, TimeUnit.SECONDS)
+            .readTimeout(6, TimeUnit.SECONDS)
             .build()
     }
 }

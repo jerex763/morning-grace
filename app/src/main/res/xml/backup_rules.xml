@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <!-- Never back up the Gemini API key. -->
-    <exclude domain="sharedpref" path="ai_prefs.xml" />
     <!-- Imported Bible recordings are large and can be restored from the user's ZIP files. -->
     <exclude domain="external" path="Music/bible-audio/" />
+    <!-- Location, alarm state and crash details must remain on this device. -->
+    <exclude domain="sharedpref" path="alarm_prefs.xml" />
+    <exclude domain="sharedpref" path="crash_prefs.xml" />
+    <exclude domain="sharedpref" path="home_summary_cache.xml" />
+    <exclude domain="database" path="bible.db" />
 </full-backup-content>

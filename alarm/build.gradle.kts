@@ -18,6 +18,7 @@ android {
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":bible"))
     implementation(project(":orchestrator"))
     implementation(project(":tts"))
     implementation(libs.hilt.android)
