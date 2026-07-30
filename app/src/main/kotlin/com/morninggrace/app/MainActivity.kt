@@ -92,9 +92,25 @@ class MainActivity : AppCompatActivity() {
 
     private val playbackStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            updatePlaybackButton(
-                intent?.getBooleanExtra(AlarmService.EXTRA_IS_PLAYING, false) == true
-            )
+            when (intent?.action) {
+                AlarmService.ACTION_PLAYBACK_STATE -> {
+                    updatePlaybackButton(
+                        intent.getBooleanExtra(AlarmService.EXTRA_IS_PLAYING, false)
+                    )
+                }
+                AlarmService.ACTION_PLAYBACK_ERROR -> {
+                    updatePlaybackButton(false)
+                    updateBibleAudioStatus()
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("暂时无法播放")
+                        .setMessage(
+                            intent.getStringExtra(AlarmService.EXTRA_PLAYBACK_ERROR)
+                                ?: "请确认录音已经导入、媒体音量已开启，然后再试一次。"
+                        )
+                        .setPositiveButton("知道了", null)
+                        .show()
+                }
+            }
         }
     }
 
@@ -324,7 +340,10 @@ class MainActivity : AppCompatActivity() {
         ContextCompat.registerReceiver(
             this,
             playbackStateReceiver,
-            IntentFilter(AlarmService.ACTION_PLAYBACK_STATE),
+            IntentFilter().apply {
+                addAction(AlarmService.ACTION_PLAYBACK_STATE)
+                addAction(AlarmService.ACTION_PLAYBACK_ERROR)
+            },
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
         playbackReceiverRegistered = true
